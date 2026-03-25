@@ -1,0 +1,125 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=mscorlib">
+
+    <!-- ══════════════════════════════════════════
+         Arabic UI Strings — LegalAI
+         ══════════════════════════════════════════ -->
+
+    <!-- App -->
+    <system:String x:Key="AppTitle">نظام الذكاء القانوني</system:String>
+    <system:String x:Key="AppSubtitle">محرك المعرفة القانونية المقيد بالأدلة</system:String>
+
+    <!-- Navigation -->
+    <system:String x:Key="NavAsk">📋 استعلام قانوني</system:String>
+    <system:String x:Key="NavChat">💬 المحادثة</system:String>
+    <system:String x:Key="NavDocuments">📁 إدارة الوثائق</system:String>
+    <system:String x:Key="NavSettings">⚙ الإعدادات</system:String>
+    <system:String x:Key="NavHealth">💊 حالة النظام</system:String>
+
+    <!-- Ask View -->
+    <system:String x:Key="AskPlaceholder">اكتب سؤالك القانوني هنا...</system:String>
+    <system:String x:Key="AskButton">إرسال الاستعلام</system:String>
+    <system:String x:Key="AskClear">مسح</system:String>
+    <system:String x:Key="AskStrictMode">الوضع الصارم</system:String>
+    <system:String x:Key="AskCaseNamespace">نطاق القضية</system:String>
+    <system:String x:Key="AskCitations">الاستشهادات</system:String>
+    <system:String x:Key="AskConfidence">مستوى الثقة</system:String>
+    <system:String x:Key="AskAbstention">امتناع عن الإجابة</system:String>
+    <system:String x:Key="AskAbstentionMsg">لم يتم العثور على أدلة كافية في الوثائق المفهرسة للإجابة على هذا السؤال.</system:String>
+    <system:String x:Key="AskProcessing">جارٍ المعالجة...</system:String>
+    <system:String x:Key="AskHistory">سجل الاستعلامات</system:String>
+    <system:String x:Key="AskWarnings">تحذيرات</system:String>
+    <system:String x:Key="AskLlmUnavailable">النموذج غير متوفر — وضع المكتبة فقط</system:String>
+    <system:String x:Key="AskPage">صفحة</system:String>
+    <system:String x:Key="AskSimilarity">التشابه</system:String>
+
+    <!-- Documents View -->
+    <system:String x:Key="DocsTitle">إدارة الوثائق</system:String>
+    <system:String x:Key="DocsDropZone">أسقط ملفات PDF هنا</system:String>
+    <system:String x:Key="DocsDropSubtext">أو انقر لاختيار الملفات</system:String>
+    <system:String x:Key="DocsBrowse">اختر ملفات</system:String>
+    <system:String x:Key="DocsIngestDir">فهرسة مجلد المراقبة</system:String>
+    <system:String x:Key="DocsOpenWatch">فتح مجلد المراقبة</system:String>
+    <system:String x:Key="DocsRefresh">تحديث</system:String>
+    <system:String x:Key="DocsTotal">إجمالي الوثائق</system:String>
+    <system:String x:Key="DocsIndexed">مفهرسة</system:String>
+    <system:String x:Key="DocsPending">بانتظار الفهرسة</system:String>
+    <system:String x:Key="DocsFailed">فشلت</system:String>
+    <system:String x:Key="DocsQuarantine">محجورة</system:String>
+    <system:String x:Key="DocsVectors">إجمالي المتجهات</system:String>
+
+    <!-- Settings View -->
+    <system:String x:Key="SettingsTitle">الإعدادات</system:String>
+    <system:String x:Key="SettingsSave">حفظ الإعدادات</system:String>
+    <system:String x:Key="SettingsEncryption">التشفير</system:String>
+    <system:String x:Key="SettingsEncEnable">تفعيل التشفير</system:String>
+    <system:String x:Key="SettingsPassphrase">عبارة المرور</system:String>
+    <system:String x:Key="SettingsModel">النموذج</system:String>
+    <system:String x:Key="SettingsLlmPath">مسار نموذج LLM</system:String>
+    <system:String x:Key="SettingsEmbPath">مسار نموذج التضمين</system:String>
+    <system:String x:Key="SettingsGpu">وحدة معالجة الرسومات</system:String>
+    <system:String x:Key="SettingsGpuLayers">طبقات GPU</system:String>
+    <system:String x:Key="SettingsContextSize">حجم السياق</system:String>
+    <system:String x:Key="SettingsRetrieval">إعدادات الاسترجاع</system:String>
+    <system:String x:Key="SettingsTopK">أعلى K نتائج</system:String>
+    <system:String x:Key="SettingsThreshold">عتبة التشابه</system:String>
+    <system:String x:Key="SettingsAbstention">عتبة الامتناع</system:String>
+    <system:String x:Key="SettingsStrict">الوضع الصارم</system:String>
+    <system:String x:Key="SettingsDualPass">التحقق المزدوج</system:String>
+    <system:String x:Key="SettingsIngestion">الفهرسة</system:String>
+    <system:String x:Key="SettingsWatchDir">مجلد المراقبة</system:String>
+    <system:String x:Key="SettingsParallel">ملفات متوازية</system:String>
+    <system:String x:Key="SettingsDataDir">مجلد البيانات</system:String>
+    <system:String x:Key="SettingsBrowse">استعراض</system:String>
+    <system:String x:Key="SettingsRestart">أعد تشغيل التطبيق لتطبيق التغييرات</system:String>
+
+    <!-- Health View -->
+    <system:String x:Key="HealthTitle">حالة النظام</system:String>
+    <system:String x:Key="HealthRefresh">تحديث</system:String>
+    <system:String x:Key="HealthLlm">حالة النموذج</system:String>
+    <system:String x:Key="HealthGpu">وحدة معالجة الرسومات</system:String>
+    <system:String x:Key="HealthVectors">مخزن المتجهات</system:String>
+    <system:String x:Key="HealthDocs">الوثائق</system:String>
+    <system:String x:Key="HealthAudit">سلسلة التدقيق</system:String>
+    <system:String x:Key="HealthVerifyAudit">التحقق من السلسلة</system:String>
+    <system:String x:Key="HealthExportAudit">تصدير سجل التدقيق</system:String>
+    <system:String x:Key="HealthMetrics">المقاييس</system:String>
+    <system:String x:Key="HealthEncryption">حالة التشفير</system:String>
+
+    <!-- Warnings -->
+    <system:String x:Key="EncryptionWarning">⚠ التشفير غير مفعّل. بيانات الوثائق غير محمية. يُنصح بتفعيل التشفير من الإعدادات.</system:String>
+    <system:String x:Key="EncryptionEnable">تفعيل الآن</system:String>
+    <system:String x:Key="ModelWarning">⚠ النموذج غير متوفر — التطبيق يعمل في وضع المكتبة فقط</system:String>
+
+    <!-- Status -->
+    <system:String x:Key="StatusReady">جاهز</system:String>
+    <system:String x:Key="StatusProcessing">جارٍ المعالجة</system:String>
+    <system:String x:Key="StatusVectors">متجهات</system:String>
+
+    <!-- Chat View -->
+    <system:String x:Key="ChatTitle">المحادثة القانونية</system:String>
+    <system:String x:Key="ChatPlaceholder">اكتب سؤالك القانوني هنا...</system:String>
+    <system:String x:Key="ChatSend">إرسال</system:String>
+    <system:String x:Key="ChatNewSession">محادثة جديدة</system:String>
+    <system:String x:Key="ChatYou">أنت</system:String>
+    <system:String x:Key="ChatAssistant">المساعد القانوني</system:String>
+    <system:String x:Key="ChatSystem">النظام</system:String>
+    <system:String x:Key="ChatCitationCount">استشهاد</system:String>
+    <system:String x:Key="ChatSearching">جارٍ البحث في الوثائق...</system:String>
+    <system:String x:Key="ChatGenerating">جارٍ توليد الإجابة...</system:String>
+    <system:String x:Key="ChatCaseNamespace">نطاق القضية</system:String>
+    <system:String x:Key="ChatLibraryOnly">المحادثة معطّلة حتى يعود النظام للعمل بشكل كامل.</system:String>
+
+    <!-- Fail-Closed Safety -->
+    <system:String x:Key="LibraryOnlyTitle">⛔ وضع المكتبة فقط — الاستعلام القانوني معطّل</system:String>
+    <system:String x:Key="LibraryOnlyDesc">يمكنك تصفح الوثائق وإدارتها، لكن لا يمكن طرح الأسئلة حتى يتم حل المشكلة.</system:String>
+    <system:String x:Key="SafetyCritical">⛔ تحذير أمان حرج — لا تعتمد على هذه الإجابة دون تحقق مستقل.</system:String>
+    <system:String x:Key="SafetyWarning">⚠ تحذيرات أمان — تحقق من المصادر قبل الاعتماد على الإجابة.</system:String>
+    <system:String x:Key="SafetyDisclaimer">⚖ لا تعتمد على هذه الإجابة في اتخاذ قرارات قانونية دون مراجعة مستقلة.</system:String>
+    <system:String x:Key="StrictModeLocked">🔒 الوضع الصارم مقفل دائماً — نظام حيوي مقيّد بالأدلة.</system:String>
+    <system:String x:Key="SystemBlockBanner">⛔ وضع المكتبة فقط — الاستعلام القانوني معطّل لأسباب تتعلق بالسلامة</system:String>
+    <system:String x:Key="StatusLibraryOnly">⚠ وضع المكتبة فقط</system:String>
+    <system:String x:Key="StatusDegraded">⚠ تشغيل مع تحذيرات</system:String>
+
+</ResourceDictionary>

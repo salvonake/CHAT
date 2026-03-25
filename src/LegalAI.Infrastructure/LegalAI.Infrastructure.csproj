@@ -1,0 +1,27 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\LegalAI.Domain\LegalAI.Domain.csproj" />
+    <ProjectReference Include="..\LegalAI.Application\LegalAI.Application.csproj" />
+    <ProjectReference Include="..\LegalAI.Ingestion\LegalAI.Ingestion.csproj" />
+    <ProjectReference Include="..\LegalAI.Retrieval\LegalAI.Retrieval.csproj" />
+    <ProjectReference Include="..\LegalAI.Security\LegalAI.Security.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LLamaSharp" Version="0.19.*" />
+    <PackageReference Include="LLamaSharp.Backend.Cuda12" Version="0.19.*" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
+    <PackageReference Include="Qdrant.Client" Version="1.17.0" />
+    <PackageReference Include="System.Text.Json" Version="10.0.3" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

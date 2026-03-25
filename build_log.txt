@@ -1,0 +1,35 @@
+﻿  Determining projects to restore...
+  All projects are up-to-date for restore.
+  LegalAI.Domain -> C:\LegalAI\src\LegalAI.Domain\bin\Debug\net8.0\LegalAI.Domain.dll
+  LegalAI.Application -> C:\LegalAI\src\LegalAI.Application\bin\Debug\net8.0\LegalAI.Application.dll
+  LegalAI.Security -> C:\LegalAI\src\LegalAI.Security\bin\Debug\net8.0\LegalAI.Security.dll
+  LegalAI.Ingestion -> C:\LegalAI\src\LegalAI.Ingestion\bin\Debug\net8.0\LegalAI.Ingestion.dll
+  LegalAI.Retrieval -> C:\LegalAI\src\LegalAI.Retrieval\bin\Debug\net8.0\LegalAI.Retrieval.dll
+  LegalAI.Infrastructure -> C:\LegalAI\src\LegalAI.Infrastructure\bin\Debug\net8.0\LegalAI.Infrastructure.dll
+C:\LegalAI\src\LegalAI.Desktop\App.xaml.cs(10,28): error CS0118: 'Application' is a namespace but is used like a type [C:\LegalAI\src\LegalAI.Desktop\LegalAI.Desktop_dtqf3wjg_wpftmp.csproj]
+C:\LegalAI\src\LegalAI.Desktop\Views\ChatView.xaml.cs(45,11): error CS8955: Source file can not contain both file-scoped and normal namespace declarations. [C:\LegalAI\src\LegalAI.Desktop\LegalAI.Desktop_dtqf3wjg_wpftmp.csproj]
+C:\LegalAI\src\LegalAI.Desktop\Services\ModelIntegrityService.cs(15,22): error CS0246: The type or namespace name 'DataPaths' could not be found (are you missing a using directive or an assembly reference?) [C:\LegalAI\src\LegalAI.Desktop\LegalAI.Desktop_dtqf3wjg_wpftmp.csproj]
+C:\LegalAI\src\LegalAI.Desktop\Services\ModelIntegrityService.cs(28,9): error CS0246: The type or namespace name 'DataPaths' could not be found (are you missing a using directive or an assembly reference?) [C:\LegalAI\src\LegalAI.Desktop\LegalAI.Desktop_dtqf3wjg_wpftmp.csproj]
+C:\LegalAI\src\LegalAI.Desktop\Services\DesktopFileWatcherService.cs(25,22): error CS0246: The type or namespace name 'DataPaths' could not be found (are you missing a using directive or an assembly reference?) [C:\LegalAI\src\LegalAI.Desktop\LegalAI.Desktop_dtqf3wjg_wpftmp.csproj]
+C:\LegalAI\src\LegalAI.Desktop\Services\DesktopFileWatcherService.cs(44,9): error CS0246: The type or namespace name 'DataPaths' could not be found (are you missing a using directive or an assembly reference?) [C:\LegalAI\src\LegalAI.Desktop\LegalAI.Desktop_dtqf3wjg_wpftmp.csproj]
+C:\LegalAI\src\LegalAI.Desktop\ViewModels\DocumentsViewModel.cs(24,22): error CS0246: The type or namespace name 'DataPaths' could not be found (are you missing a using directive or an assembly reference?) [C:\LegalAI\src\LegalAI.Desktop\LegalAI.Desktop_dtqf3wjg_wpftmp.csproj]
+C:\LegalAI\src\LegalAI.Desktop\ViewModels\SettingsViewModel.cs(20,22): error CS0246: The type or namespace name 'DataPaths' could not be found (are you missing a using directive or an assembly reference?) [C:\LegalAI\src\LegalAI.Desktop\LegalAI.Desktop_dtqf3wjg_wpftmp.csproj]
+C:\LegalAI\src\LegalAI.Desktop\ViewModels\DocumentsViewModel.cs(75,9): error CS0246: The type or namespace name 'DataPaths' could not be found (are you missing a using directive or an assembly reference?) [C:\LegalAI\src\LegalAI.Desktop\LegalAI.Desktop_dtqf3wjg_wpftmp.csproj]
+C:\LegalAI\src\LegalAI.Desktop\ViewModels\SettingsViewModel.cs(99,9): error CS0246: The type or namespace name 'DataPaths' could not be found (are you missing a using directive or an assembly reference?) [C:\LegalAI\src\LegalAI.Desktop\LegalAI.Desktop_dtqf3wjg_wpftmp.csproj]
+
+Build FAILED.
+
+C:\LegalAI\src\LegalAI.Desktop\App.xaml.cs(10,28): error CS0118: 'Application' is a namespace but is used like a type [C:\LegalAI\src\LegalAI.Desktop\LegalAI.Desktop_dtqf3wjg_wpftmp.csproj]
+C:\LegalAI\src\LegalAI.Desktop\Views\ChatView.xaml.cs(45,11): error CS8955: Source file can not contain both file-scoped and normal namespace declarations. [C:\LegalAI\src\LegalAI.Desktop\LegalAI.Desktop_dtqf3wjg_wpftmp.csproj]
+C:\LegalAI\src\LegalAI.Desktop\Services\ModelIntegrityService.cs(15,22): error CS0246: The type or namespace name 'DataPaths' could not be found (are you missing a using directive or an assembly reference?) [C:\LegalAI\src\LegalAI.Desktop\LegalAI.Desktop_dtqf3wjg_wpftmp.csproj]
+C:\LegalAI\src\LegalAI.Desktop\Services\ModelIntegrityService.cs(28,9): error CS0246: The type or namespace name 'DataPaths' could not be found (are you missing a using directive or an assembly reference?) [C:\LegalAI\src\LegalAI.Desktop\LegalAI.Desktop_dtqf3wjg_wpftmp.csproj]
+C:\LegalAI\src\LegalAI.Desktop\Services\DesktopFileWatcherService.cs(25,22): error CS0246: The type or namespace name 'DataPaths' could not be found (are you missing a using directive or an assembly reference?) [C:\LegalAI\src\LegalAI.Desktop\LegalAI.Desktop_dtqf3wjg_wpftmp.csproj]
+C:\LegalAI\src\LegalAI.Desktop\Services\DesktopFileWatcherService.cs(44,9): error CS0246: The type or namespace name 'DataPaths' could not be found (are you missing a using directive or an assembly reference?) [C:\LegalAI\src\LegalAI.Desktop\LegalAI.Desktop_dtqf3wjg_wpftmp.csproj]
+C:\LegalAI\src\LegalAI.Desktop\ViewModels\DocumentsViewModel.cs(24,22): error CS0246: The type or namespace name 'DataPaths' could not be found (are you missing a using directive or an assembly reference?) [C:\LegalAI\src\LegalAI.Desktop\LegalAI.Desktop_dtqf3wjg_wpftmp.csproj]
+C:\LegalAI\src\LegalAI.Desktop\ViewModels\SettingsViewModel.cs(20,22): error CS0246: The type or namespace name 'DataPaths' could not be found (are you missing a using directive or an assembly reference?) [C:\LegalAI\src\LegalAI.Desktop\LegalAI.Desktop_dtqf3wjg_wpftmp.csproj]
+C:\LegalAI\src\LegalAI.Desktop\ViewModels\DocumentsViewModel.cs(75,9): error CS0246: The type or namespace name 'DataPaths' could not be found (are you missing a using directive or an assembly reference?) [C:\LegalAI\src\LegalAI.Desktop\LegalAI.Desktop_dtqf3wjg_wpftmp.csproj]
+C:\LegalAI\src\LegalAI.Desktop\ViewModels\SettingsViewModel.cs(99,9): error CS0246: The type or namespace name 'DataPaths' could not be found (are you missing a using directive or an assembly reference?) [C:\LegalAI\src\LegalAI.Desktop\LegalAI.Desktop_dtqf3wjg_wpftmp.csproj]
+    0 Warning(s)
+    10 Error(s)
+
+Time Elapsed 00:00:00.91

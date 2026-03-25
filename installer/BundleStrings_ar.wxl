@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WixLocalization xmlns="http://wixtoolset.org/schemas/v4/wxl"
+                 Culture="ar"
+                 Language="1025"
+                 Codepage="1256">
+  <String Id="Caption" Value="LegalAI Enterprise Setup"/>
+  <String Id="Title" Value="LegalAI Enterprise"/>
+  <String Id="InstallHeader" Value="تثبيت LegalAI Enterprise"/>
+  <String Id="InstallMessage" Value="سيتم تثبيت منصة LegalAI Enterprise للدعم القانوني المقيد بالأدلة على جهازك."/>
+  <String Id="InstallVersion" Value="الإصدار [WixBundleVersion]"/>
+  <String Id="ConfirmCancelMessage" Value="هل أنت متأكد من إلغاء التثبيت؟"/>
+  <String Id="ExecuteUpgradeRelatedBundle" Value="الإصدار السابق"/>
+  <String Id="SuccessHeader" Value="تم التثبيت بنجاح"/>
+  <String Id="SuccessInstallHeader" Value="اكتمل التثبيت بنجاح ✓"/>
+  <String Id="SuccessRepairHeader" Value="اكتمل الإصلاح بنجاح ✓"/>
+  <String Id="SuccessUninstallHeader" Value="اكتملت إزالة التثبيت بنجاح"/>
+  <String Id="FailureHeader" Value="فشل التثبيت"/>
+  <String Id="FailureInstallHeader" Value="فشل التثبيت. الرجاء المحاولة مرة أخرى."/>
+  <String Id="FailureRepairHeader" Value="فشل الإصلاح."/>
+  <String Id="FailureUninstallHeader" Value="فشلت إزالة التثبيت."/>
+  <String Id="ProgressHeader" Value="جارٍ التثبيت..."/>
+  <String Id="OverallProgressPackageText" Value="جارٍ تهيئة: [1]"/>
+  <String Id="FilesInUseTitle" Value="ملفات قيد الاستخدام"/>
+  <String Id="FilesInUseLabel" Value="البرامج التالية تستخدم ملفات يحتاج المثبّت لتحديثها. أغلقها وأعد المحاولة."/>
+  <String Id="InstallAcceptCheckbox" Value="أوافق على شروط الاستخدام"/>
+  <String Id="InstallOptionsButton" Value="خيارات"/>
+  <String Id="InstallInstallButton" Value="تثبيت"/>
+  <String Id="InstallCloseButton" Value="إغلاق"/>
+  <String Id="SuccessRestartButton" Value="إعادة تشغيل"/>
+  <String Id="SuccessCloseButton" Value="إغلاق"/>
+  <String Id="SuccessLaunchButton" Value="تشغيل نظام الذكاء القانوني"/>
+  <String Id="ModifyButton" Value="تعديل"/>
+  <String Id="RepairButton" Value="إصلاح"/>
+  <String Id="UninstallButton" Value="إزالة التثبيت"/>
+</WixLocalization>

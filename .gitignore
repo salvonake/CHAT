@@ -1,0 +1,64 @@
+## Build output
+bin/
+obj/
+publish/
+
+## IDE
+.vs/
+.vscode/
+*.suo
+*.user
+*.sln.docstates
+*.userprefs
+
+## NuGet
+packages/
+*.nupkg
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## Runtime data
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+
+## Ollama models (pulled separately)
+models/
+
+## ONNX models (large binaries)
+*.onnx
+
+## Encryption keys
+*.key
+*.pem
+
+## Logs
+logs/
+*.log
+
+## Installer artifacts
+installer/output/
+installer/prereqs/
+
+## Test outputs
+TestResults/
+*.trx
+
+## PDF staging
+pdfs/
+
+## Qdrant persistent data
+qdrant_storage/
+
+## OS files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+
+## Env files
+.env
+.env.*
+!.env.example

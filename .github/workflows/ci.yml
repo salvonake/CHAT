@@ -1,0 +1,300 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: Unit Tests (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    env:
+      COVERAGE_MIN_BASE: ${{ vars.LEGALAI_UNIT_COVERAGE_MIN || '30' }}
+      STRICT_COVERAGE_ENABLED: ${{ vars.LEGALAI_CI_STRICT_COVERAGE || 'false' }}
+      STRICT_COVERAGE_MIN: ${{ vars.LEGALAI_CI_STRICT_COVERAGE_MIN || '70' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+          cache: true
+          cache-dependency-path: |
+            LegalAI.sln
+            src/**/*.csproj
+            tests/**/*.csproj
+
+      - name: Restore
+        run: dotnet restore LegalAI.sln
+
+      - name: Build unit tests
+        run: dotnet build tests/LegalAI.UnitTests/LegalAI.UnitTests.csproj --configuration Release
+
+      - name: Clean unit TestResults
+        shell: pwsh
+        run: |
+          if (Test-Path "TestResults") {
+            Remove-Item -Recurse -Force "TestResults"
+          }
+          New-Item -ItemType Directory -Path "TestResults" | Out-Null
+
+      - name: Run unit tests
+        run: dotnet test tests/LegalAI.UnitTests/LegalAI.UnitTests.csproj --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --logger "trx;LogFileName=unit-tests.trx" --results-directory TestResults
+
+      - name: Resolve unit coverage policy
+        shell: pwsh
+        run: |
+          $strictEnabledRaw = "$env:STRICT_COVERAGE_ENABLED".Trim().ToLowerInvariant()
+          $strictEnabled = @("1", "true", "yes", "on").Contains($strictEnabledRaw)
+          $baseMin = [double]$env:COVERAGE_MIN_BASE
+          $strictMin = [double]$env:STRICT_COVERAGE_MIN
+          $effectiveMin = if ($strictEnabled) { $strictMin } else { $baseMin }
+          $policy = if ($strictEnabled) { "strict" } else { "standard" }
+          $effectiveMinText = [string]::Format([System.Globalization.CultureInfo]::InvariantCulture, "{0:0.##}", $effectiveMin)
+
+          "COVERAGE_MIN=$effectiveMinText" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "COVERAGE_POLICY=$policy" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+          "### Unit Coverage Policy`n`n| Mode | Effective Minimum | Base Minimum | Strict Minimum |`n|---|---:|---:|---:|`n| $policy | $effectiveMinText% | $baseMin% | $strictMin% |" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+
+      - name: Enforce unit coverage threshold
+        if: ${{ always() }}
+        shell: pwsh
+        run: |
+          $artifactHint = "Artifact: unit-coverage-cobertura"
+          $files = Get-ChildItem -Path "TestResults" -Recurse -Filter "coverage.cobertura.xml" -File
+          if (-not $files -or $files.Count -eq 0) {
+            "### Unit Coverage`n`n| Status | Coverage | Minimum | Details |`n|---|---:|---:|---|`n| FAILED | N/A | $env:COVERAGE_MIN% | No Cobertura coverage files were produced. $artifactHint |" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            throw "No Cobertura coverage files were produced."
+          }
+
+          [double]$covered = 0
+          [double]$valid = 0
+          foreach ($file in $files) {
+            [xml]$xml = Get-Content -Path $file.FullName
+            $covered += [double]$xml.coverage.'lines-covered'
+            $valid += [double]$xml.coverage.'lines-valid'
+          }
+
+          if ($valid -le 0) {
+            "### Unit Coverage`n`n| Status | Coverage | Minimum | Details |`n|---|---:|---:|---|`n| FAILED | N/A | $env:COVERAGE_MIN% | Coverage report has zero valid lines. $artifactHint |" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            throw "Coverage report has zero valid lines."
+          }
+
+          $percent = [math]::Round(($covered / $valid) * 100, 2)
+          $minimum = [double]$env:COVERAGE_MIN
+          "Unit line coverage: $percent% (minimum: $minimum%)"
+
+          if ($percent -ge $minimum) {
+            "### Unit Coverage`n`n| Status | Coverage | Minimum | Details |`n|---|---:|---:|---|`n| PASSED | $percent% | $minimum% | Threshold met. $artifactHint |" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+
+          if ($percent -lt $minimum) {
+            "### Unit Coverage`n`n| Status | Coverage | Minimum | Details |`n|---|---:|---:|---|`n| FAILED | $percent% | $minimum% | Threshold not met. $artifactHint |" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            throw "Unit line coverage gate failed: $percent% < $minimum%"
+          }
+
+      - name: Unit test summary
+        if: ${{ always() }}
+        shell: pwsh
+        run: ./tests/scripts/Write-TestSummary.ps1 -ResultsDirectory "TestResults" -Title "Unit Tests" -ArtifactName "unit-test-results"
+
+      - name: Upload unit test results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: TestResults/**/*.trx
+          if-no-files-found: warn
+
+      - name: Upload unit coverage report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-coverage-cobertura
+          path: TestResults/**/coverage.cobertura.xml
+          if-no-files-found: warn
+
+  integration-qdrant:
+    name: Integration Tests (Qdrant)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      qdrant:
+        image: qdrant/qdrant:latest
+        ports:
+          - 6333:6333
+          - 6334:6334
+        options: >-
+          --health-cmd="curl -f http://localhost:6333/healthz || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      LEGALAI_RUN_INTEGRATION: "true"
+      LEGALAI_QDRANT_HOST: "127.0.0.1"
+      LEGALAI_QDRANT_PORT: "6334"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+          cache: true
+          cache-dependency-path: |
+            LegalAI.sln
+            src/**/*.csproj
+            tests/**/*.csproj
+
+      - name: Restore
+        run: dotnet restore tests/LegalAI.IntegrationTests/LegalAI.IntegrationTests.csproj
+
+      - name: Build integration tests
+        run: dotnet build tests/LegalAI.IntegrationTests/LegalAI.IntegrationTests.csproj --configuration Release
+
+      - name: Clean integration TestResults (Qdrant)
+        shell: pwsh
+        run: |
+          if (Test-Path "TestResults") {
+            Remove-Item -Recurse -Force "TestResults"
+          }
+          New-Item -ItemType Directory -Path "TestResults" | Out-Null
+
+      - name: Run integration tests (Qdrant)
+        run: dotnet test tests/LegalAI.IntegrationTests/LegalAI.IntegrationTests.csproj --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=integration-qdrant.trx" --results-directory TestResults
+
+      - name: Qdrant integration summary
+        if: ${{ always() }}
+        shell: pwsh
+        run: ./tests/scripts/Write-TestSummary.ps1 -ResultsDirectory "TestResults" -Title "Integration Tests (Qdrant)" -ArtifactName "integration-qdrant-results"
+
+      - name: Upload Qdrant integration results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-qdrant-results
+          path: TestResults/**/*.trx
+          if-no-files-found: warn
+
+  integration-onnx:
+    name: Integration Tests (ONNX)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: ${{ secrets.LEGALAI_ONNX_MODEL_URL != '' }}
+
+    env:
+      LEGALAI_RUN_INTEGRATION: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+          cache: true
+          cache-dependency-path: |
+            LegalAI.sln
+            src/**/*.csproj
+            tests/**/*.csproj
+
+      - name: Download ONNX model artifact
+        run: |
+          mkdir -p .artifacts
+          curl -L "${{ secrets.LEGALAI_ONNX_MODEL_URL }}" -o .artifacts/model.onnx
+
+      - name: Restore
+        run: dotnet restore tests/LegalAI.IntegrationTests/LegalAI.IntegrationTests.csproj
+
+      - name: Build integration tests
+        run: dotnet build tests/LegalAI.IntegrationTests/LegalAI.IntegrationTests.csproj --configuration Release
+
+      - name: Clean integration TestResults (ONNX)
+        shell: pwsh
+        run: |
+          if (Test-Path "TestResults") {
+            Remove-Item -Recurse -Force "TestResults"
+          }
+          New-Item -ItemType Directory -Path "TestResults" | Out-Null
+
+      - name: Run integration tests (ONNX)
+        env:
+          LEGALAI_ONNX_MODEL_PATH: ${{ github.workspace }}/.artifacts/model.onnx
+        run: dotnet test tests/LegalAI.IntegrationTests/LegalAI.IntegrationTests.csproj --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=integration-onnx.trx" --results-directory TestResults
+
+      - name: ONNX integration summary
+        if: ${{ always() }}
+        shell: pwsh
+        run: ./tests/scripts/Write-TestSummary.ps1 -ResultsDirectory "TestResults" -Title "Integration Tests (ONNX)" -ArtifactName "integration-onnx-results"
+
+      - name: Upload ONNX integration results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-onnx-results
+          path: TestResults/**/*.trx
+          if-no-files-found: warn
+
+  readiness-gate:
+    name: Readiness Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [unit-tests, integration-qdrant, integration-onnx]
+    if: ${{ always() }}
+
+    steps:
+      - name: Evaluate readiness status
+        shell: bash
+        run: |
+          unit_result="${{ needs.unit-tests.result }}"
+          qdrant_result="${{ needs.integration-qdrant.result }}"
+          onnx_result="${{ needs.integration-onnx.result }}"
+
+          echo "### Readiness Gate" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Job | Result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Unit Tests | $unit_result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Integration Tests (Qdrant) | $qdrant_result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Integration Tests (ONNX) | $onnx_result |" >> "$GITHUB_STEP_SUMMARY"
+
+          overall_result="PASSED"
+          if [[ "$unit_result" != "success" || "$qdrant_result" != "success" ]]; then
+            overall_result="FAILED"
+          fi
+          if [[ "$onnx_result" != "success" && "$onnx_result" != "skipped" ]]; then
+            overall_result="FAILED"
+          fi
+          echo "| Overall | $overall_result |" >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$unit_result" != "success" ]]; then
+            echo "Unit tests failed or were cancelled." >&2
+            exit 1
+          fi
+
+          if [[ "$qdrant_result" != "success" ]]; then
+            echo "Qdrant integration tests failed or were cancelled." >&2
+            exit 1
+          fi
+
+          if [[ "$onnx_result" != "success" && "$onnx_result" != "skipped" ]]; then
+            echo "ONNX integration tests failed or were cancelled." >&2
+            exit 1
+          fi

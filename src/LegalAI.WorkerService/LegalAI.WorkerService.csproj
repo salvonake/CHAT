@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-LegalAI.WorkerService-4ed7765e-97b0-40e9-9586-d21dee58632f</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LegalAI.Domain\LegalAI.Domain.csproj" />
+    <ProjectReference Include="..\LegalAI.Application\LegalAI.Application.csproj" />
+    <ProjectReference Include="..\LegalAI.Infrastructure\LegalAI.Infrastructure.csproj" />
+    <ProjectReference Include="..\LegalAI.Ingestion\LegalAI.Ingestion.csproj" />
+    <ProjectReference Include="..\LegalAI.Security\LegalAI.Security.csproj" />
+  </ItemGroup>
+</Project>

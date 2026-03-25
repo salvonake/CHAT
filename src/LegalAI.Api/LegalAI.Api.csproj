@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="AspNetCoreRateLimit" Version="5.0.0" />
+    <PackageReference Include="MediatR" Version="14.1.0" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.24" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\LegalAI.Domain\LegalAI.Domain.csproj" />
+    <ProjectReference Include="..\LegalAI.Application\LegalAI.Application.csproj" />
+    <ProjectReference Include="..\LegalAI.Infrastructure\LegalAI.Infrastructure.csproj" />
+    <ProjectReference Include="..\LegalAI.Ingestion\LegalAI.Ingestion.csproj" />
+    <ProjectReference Include="..\LegalAI.Retrieval\LegalAI.Retrieval.csproj" />
+    <ProjectReference Include="..\LegalAI.Security\LegalAI.Security.csproj" />
+  </ItemGroup>
+
+</Project>

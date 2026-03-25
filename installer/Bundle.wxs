@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    LegalAI Desktop — WiX v5 Burn Bundle (.exe Installer)
+    ═══════════════════════════════════════════════════════
+    Produces a single LegalAI-Setup.exe that:
+    • Shows a branded wizard UI (install / repair / uninstall)
+    • Checks for .NET Desktop Runtime 8.x and installs it if missing
+    • Checks for VC++ Redistributable (required by llama.cpp / CUDA)
+    • Embeds the LegalAI MSI Package
+    • Supports silent install: LegalAI-Setup.exe /quiet
+    • Supports passive (progress-only): LegalAI-Setup.exe /passive
+    • Logs: LegalAI-Setup.exe /log install.log
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <Bundle Name="$(var.ProductNameEn)"
+          Manufacturer="$(var.Manufacturer)"
+          Version="1.0.0.0"
+          UpgradeCode="$(var.BundleUpgradeCode)"
+          IconSourceFile="Resources\LegalAI.ico"
+          AboutUrl="https://legalai.local"
+          Compressed="yes">
+
+    <!-- ════════════════════════════════════════
+         Bootstrapper Application (UI)
+         ════════════════════════════════════════
+         WixStandardBootstrapperApplication provides a built-in
+         wizard UI with Install / Repair / Uninstall screens.
+         HyperlinkLicense shows license as inline hyperlink.
+    -->
+    <BootstrapperApplication>
+      <bal:WixStandardBootstrapperApplication
+          LicenseUrl="https://legalai.local/license"
+          Theme="hyperlinkLargeLicense"
+          LogoFile="Resources\LegalAI.ico"
+          LocalizationFile="BundleStrings_ar.wxl"
+          SuppressOptionsUI="yes"/>
+    </BootstrapperApplication>
+
+    <!-- ════════════════════════════════════════
+         CHAIN — Install order
+         ════════════════════════════════════════
+         Items are installed top-to-bottom.
+         Prerequisites first, then the main MSI.
+    -->
+    <Chain DisableSystemRestore="yes">
+
+      <!-- ── Prerequisite 1: VC++ Redistributable 2022 (x64) ──
+           Required by llama.cpp / LLamaSharp native binaries.
+           Detect via registry; skip if already installed.
+      -->
+      <ExePackage
+          Id="VCRedist"
+                         SourceFile="prereqs\vc_redist.x64.exe"
+                         InstallArguments="/install /quiet /norestart"
+                         RepairArguments="/repair /quiet /norestart"
+                         UninstallArguments="/uninstall /quiet /norestart"
+          PerMachine="yes"
+          Vital="yes"
+          Permanent="yes"
+                         DetectCondition="VCRedistInstalled" />
+
+      <!-- ── Prerequisite 2: .NET 8 Desktop Runtime (x64) ──
+           Safety net for framework-dependent builds and tools.
+           DetectCondition checks for host version 8.0+.
+      -->
+      <ExePackage
+          Id="DotNet8Runtime"
+                         SourceFile="prereqs\windowsdesktop-runtime-8.0-win-x64.exe"
+                         InstallArguments="/install /quiet /norestart"
+                         RepairArguments="/repair /quiet /norestart"
+          PerMachine="yes"
+          Vital="no"
+          Permanent="yes"
+                         DetectCondition="DotNetHostVersion AND DotNetHostVersion &gt;= v8.0.0" />
+
+      <!-- ── Main Application MSI ── -->
+      <MsiPackage
+          Id="LegalAIMsi"
+          SourceFile="$(var.LegalAI.Installer.TargetPath)"
+          Vital="yes"
+                         ForcePerMachine="yes" />
+
+    </Chain>
+
+  </Bundle>
+
+  <!-- ════════════════════════════════════════
+       Detection conditions
+       ════════════════════════════════════════ -->
+  <Fragment>
+    <!-- VC++ 2015-2022 Redistributable x64: check Installed DWORD = 1 -->
+    <util:RegistrySearch
+        Id="VCRedistSearch"
+        Root="HKLM"
+        Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\X64"
+        Value="Installed"
+        Result="value"
+        Variable="VCRedistInstalled"/>
+
+     <!-- .NET 8 Desktop Runtime presence (host version >= 8.0.0) -->
+     <util:RegistrySearch
+          Id="DotNetHostVersionSearch"
+          Root="HKLM"
+          Key="SOFTWARE\dotnet\Setup\InstalledVersions\x64\sharedhost"
+          Value="Version"
+          Result="value"
+          Variable="DotNetHostVersion"/>
+  </Fragment>
+
+</Wix>

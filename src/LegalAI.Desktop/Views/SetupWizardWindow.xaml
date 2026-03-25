@@ -1,0 +1,745 @@
+<Window x:Class="LegalAI.Desktop.Views.SetupWizardWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="إعداد نظام الدعم القانوني — LCDSS Setup"
+        Height="680" Width="820"
+        MinHeight="580" MinWidth="700"
+        WindowStartupLocation="CenterScreen"
+        FlowDirection="RightToLeft"
+        ResizeMode="CanResize"
+        Background="{DynamicResource BackgroundBrush}">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <!-- Step visibility converters using DataTriggers -->
+        <Style x:Key="StepPanel" TargetType="StackPanel">
+            <Setter Property="Visibility" Value="Collapsed"/>
+        </Style>
+
+        <!-- Radio button style -->
+        <Style x:Key="WizardRadio" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource ArabicFont}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="0,6"/>
+            <Setter Property="Padding" Value="8,2"/>
+        </Style>
+
+        <!-- Section label -->
+        <Style x:Key="WizardLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource ArabicFont}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Margin" Value="0,12,0,4"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ══════════════════════════════════════════
+             Header
+             ══════════════════════════════════════════ -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource PrimaryBrush}"
+                Padding="24,18">
+            <StackPanel>
+                <TextBlock Text="⚖️ LCDSS — إعداد المعالج"
+                           FontSize="20" FontWeight="Bold"
+                           Foreground="{DynamicResource AccentBrush}"
+                           FontFamily="{DynamicResource ArabicFont}"/>
+                <TextBlock Text="{Binding StepTitle}"
+                           FontSize="14"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           FontFamily="{DynamicResource ArabicFont}"
+                           Margin="0,4,0,0"/>
+
+                <Grid Margin="0,14,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" CornerRadius="12" Padding="8,4" Margin="0,0,6,0">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="0">
+                                        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="1. البداية" HorizontalAlignment="Center"/>
+                    </Border>
+
+                    <Border Grid.Column="1" CornerRadius="12" Padding="8,4" Margin="0,0,6,0">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="1">
+                                        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="2. LLM" HorizontalAlignment="Center"/>
+                    </Border>
+
+                    <Border Grid.Column="2" CornerRadius="12" Padding="8,4" Margin="0,0,6,0">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="2">
+                                        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="3. Embedding" HorizontalAlignment="Center"/>
+                    </Border>
+
+                    <Border Grid.Column="3" CornerRadius="12" Padding="8,4" Margin="0,0,6,0">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                                        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="4. التنفيذ" HorizontalAlignment="Center"/>
+                    </Border>
+
+                    <Border Grid.Column="4" CornerRadius="12" Padding="8,4">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="5. الاكتمال" HorizontalAlignment="Center"/>
+                    </Border>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- ══════════════════════════════════════════
+             Step Content
+             ══════════════════════════════════════════ -->
+        <ScrollViewer Grid.Row="1"
+                      VerticalScrollBarVisibility="Auto"
+                      Padding="32,24">
+
+            <Grid>
+                <!-- ════ Step 0: Welcome ════ -->
+                <StackPanel x:Name="StepWelcome">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <TextBlock Text="مرحباً بكم في نظام الدعم القانوني"
+                               Style="{DynamicResource SectionHeader}"
+                               FontSize="18"
+                               Margin="0,0,0,8"/>
+
+                    <TextBlock TextWrapping="Wrap"
+                               Style="{DynamicResource BodyText}"
+                               Margin="0,0,0,20">
+                        هذا المعالج سيساعدك في إعداد النماذج اللازمة لتشغيل النظام.
+                        يحتاج النظام إلى نموذج لغوي (LLM) للإجابة على الاستعلامات القانونية
+                        ونموذج تضمين (Embedding) للبحث في الوثائق.
+                    </TextBlock>
+
+                    <Border Style="{DynamicResource Card}" Margin="0,0,0,16" Padding="16">
+                        <StackPanel>
+                            <TextBlock Text="اختر طريقة التشغيل:"
+                                       Style="{DynamicResource SectionHeader}"
+                                       Margin="0,0,0,12"/>
+
+                            <RadioButton Style="{StaticResource WizardRadio}"
+                                         IsChecked="{Binding UseLlamaSharp}"
+                                         GroupName="Provider">
+                                <StackPanel>
+                                    <TextBlock Text="📥 نماذج محلية (LLamaSharp + ONNX)"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                    <TextBlock Text="تشغيل مستقل بالكامل — لا يحتاج اتصال بالإنترنت أثناء العمل. يتطلب تحميل ملفات النماذج."
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               FontSize="12"
+                                               Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </RadioButton>
+
+                            <RadioButton Style="{StaticResource WizardRadio}"
+                                         IsChecked="{Binding UseOllama}"
+                                         GroupName="Provider">
+                                <StackPanel>
+                                    <TextBlock Text="🌐 خادم Ollama"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                    <TextBlock Text="يتطلب تشغيل خادم Ollama بشكل منفصل. مناسب إذا كنت تستخدم Ollama بالفعل أو تريد مشاركة النماذج بين عدة تطبيقات."
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               FontSize="12"
+                                               Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </RadioButton>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="{DynamicResource WarningBannerBrush}"
+                            CornerRadius="6" Padding="14,10" Margin="0,8,0,0">
+                        <TextBlock TextWrapping="Wrap"
+                                   Foreground="{DynamicResource WarningBrush}"
+                                   FontFamily="{DynamicResource ArabicFont}"
+                                   FontSize="12">
+                            ⚠ ملاحظة: النموذج اللغوي الافتراضي (Qwen 2.5 14B) يحتاج حوالي 10 GB من مساحة القرص
+                            و 16 GB من ذاكرة الوصول العشوائي كحد أدنى. تأكد من توفر المساحة الكافية.
+                        </TextBlock>
+                    </Border>
+
+                    <Border Margin="0,16,0,0" Padding="16">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding UseLlamaSharp}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel>
+                            <TextBlock Text="📁 اختيار مجلد النماذج (مرة واحدة)"
+                                       Style="{DynamicResource SectionHeader}"
+                                       Margin="0,0,0,8"/>
+                            <TextBlock Text="إذا كانت النماذج مثبتة مسبقاً، اختر المجلد وسيتم اكتشاف ملفات GGUF و ONNX تلقائياً."
+                                       Style="{DynamicResource BodyText}"
+                                       TextWrapping="Wrap"
+                                       Margin="0,0,0,12"/>
+                            <Button Content="اختيار مجلد النماذج"
+                                    Command="{Binding PickModelsFolderCommand}"
+                                    Style="{DynamicResource SecondaryButton}"
+                                    Padding="16,8"
+                                    HorizontalAlignment="Right"
+                                    MinWidth="180"/>
+                            <TextBlock Text="{Binding ModelFolderStatusMessage}"
+                                       Margin="0,10,0,0"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Margin="0,16,0,0" Padding="16">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding UseOllama}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel>
+                            <TextBlock Text="⚙ إعداد Ollama (اختياري بعد التثبيت)"
+                                       Style="{DynamicResource SectionHeader}"
+                                       Margin="0,0,0,8"/>
+
+                            <TextBlock Text="إذا لم يكن Ollama مثبتاً لديك، يمكنك تثبيته الآن ثم اختبار الاتصال قبل المتابعة."
+                                       TextWrapping="Wrap"
+                                       Style="{DynamicResource BodyText}"
+                                       Margin="0,0,0,12"/>
+
+                            <TextBlock Style="{StaticResource WizardLabel}" Text="عنوان خادم Ollama:"/>
+                            <TextBox Text="{Binding OllamaUrl, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource ArabicTextBox}"
+                                     FlowDirection="LeftToRight"
+                                     Margin="0,0,0,8"/>
+
+                            <TextBlock Style="{StaticResource WizardLabel}" Text="نموذج LLM في Ollama:"/>
+                            <TextBox Text="{Binding OllamaLlmModel, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource ArabicTextBox}"
+                                     FlowDirection="LeftToRight"
+                                     Margin="0,0,0,8"/>
+
+                            <TextBlock Style="{StaticResource WizardLabel}" Text="نموذج Embedding في Ollama:"/>
+                            <TextBox Text="{Binding OllamaEmbeddingModel, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource ArabicTextBox}"
+                                     FlowDirection="LeftToRight"
+                                     Margin="0,0,0,12"/>
+
+                            <StackPanel Orientation="Horizontal">
+                                <Button Content="اختبار الاتصال"
+                                        Command="{Binding TestOllamaCommand}"
+                                        Style="{DynamicResource SecondaryButton}"
+                                        Padding="16,8"
+                                        Margin="0,0,8,0"/>
+                                <Button Content="تنزيل Ollama"
+                                        Command="{Binding OpenOllamaDownloadPageCommand}"
+                                        Style="{DynamicResource SecondaryButton}"
+                                        Padding="16,8"/>
+                            </StackPanel>
+
+                            <TextBlock Text="{Binding OllamaStatusMessage}"
+                                       Margin="0,10,0,0"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ════ Step 1: LLM Model ════ -->
+                <StackPanel x:Name="StepLlm">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="1">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <TextBlock Text="إعداد النموذج اللغوي (LLM)"
+                               Style="{DynamicResource SectionHeader}"
+                               FontSize="18"
+                               Margin="0,0,0,8"/>
+
+                    <TextBlock TextWrapping="Wrap"
+                               Style="{DynamicResource BodyText}"
+                               Margin="0,0,0,16">
+                        حدد مصدر ملف النموذج اللغوي بصيغة GGUF.
+                        يمكنك الاختيار بين نسخ ملف محلي أو تحميله من الإنترنت.
+                    </TextBlock>
+
+                    <Border Style="{DynamicResource Card}" Padding="16">
+                        <StackPanel>
+                            <!-- Browse option -->
+                            <RadioButton Style="{StaticResource WizardRadio}"
+                                         IsChecked="{Binding LlmBrowseLocal}"
+                                         GroupName="LlmSource">
+                                <TextBlock Text="📂 تحديد ملف محلي (منسوخ مسبقاً أو على شبكة محلية)"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            </RadioButton>
+
+                            <StackPanel Margin="28,0,0,12"
+                                        Visibility="{Binding LlmBrowseLocal, Converter={StaticResource BoolToVis}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0"
+                                             Text="{Binding LlmLocalPath, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{DynamicResource ArabicTextBox}"
+                                             FlowDirection="LeftToRight"
+                                             Margin="0,0,8,0"/>
+                                    <Button Grid.Column="1"
+                                            Content="استعراض..."
+                                            Command="{Binding BrowseLlmModelCommand}"
+                                            Style="{DynamicResource SecondaryButton}"
+                                            Padding="16,8"
+                                            MinWidth="100"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- Download option -->
+                            <RadioButton Style="{StaticResource WizardRadio}"
+                                         IsChecked="{Binding LlmDownloadUrl}"
+                                         GroupName="LlmSource">
+                                <TextBlock Text="⬇️ تحميل من رابط (HuggingFace أو خادم محلي)"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            </RadioButton>
+
+                            <StackPanel Margin="28,0,0,12"
+                                        Visibility="{Binding LlmDownloadUrl, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Style="{StaticResource WizardLabel}"
+                                           Text="رابط التحميل:"/>
+                                <TextBox Text="{Binding LlmDownloadUrlText, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{DynamicResource ArabicTextBox}"
+                                         FlowDirection="LeftToRight"/>
+                            </StackPanel>
+
+                            <!-- Model filename -->
+                            <TextBlock Style="{StaticResource WizardLabel}"
+                                       Text="اسم ملف النموذج (في مجلد النماذج):"/>
+                            <TextBox Text="{Binding LlmModelFileName, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource ArabicTextBox}"
+                                     FlowDirection="LeftToRight"
+                                     MaxWidth="400"
+                                     HorizontalAlignment="Right"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Status message -->
+                    <TextBlock Text="{Binding LlmStatusMessage}"
+                               FontFamily="{DynamicResource ArabicFont}"
+                               FontSize="13"
+                               Margin="0,12,0,0"
+                               TextWrapping="Wrap">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding LlmStatusMessage}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- ════ Step 2: Embedding Model ════ -->
+                <StackPanel x:Name="StepEmbedding">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="2">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <TextBlock Text="إعداد نموذج التضمين (Embedding)"
+                               Style="{DynamicResource SectionHeader}"
+                               FontSize="18"
+                               Margin="0,0,0,8"/>
+
+                    <TextBlock TextWrapping="Wrap"
+                               Style="{DynamicResource BodyText}"
+                               Margin="0,0,0,16">
+                        حدد مصدر ملف نموذج التضمين بصيغة ONNX.
+                        يُستخدم هذا النموذج لتحويل النصوص إلى متجهات للبحث الدلالي.
+                    </TextBlock>
+
+                    <Border Style="{DynamicResource Card}" Padding="16">
+                        <StackPanel>
+                            <!-- Browse option -->
+                            <RadioButton Style="{StaticResource WizardRadio}"
+                                         IsChecked="{Binding EmbBrowseLocal}"
+                                         GroupName="EmbSource">
+                                <TextBlock Text="📂 تحديد ملف محلي"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            </RadioButton>
+
+                            <StackPanel Margin="28,0,0,12"
+                                        Visibility="{Binding EmbBrowseLocal, Converter={StaticResource BoolToVis}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0"
+                                             Text="{Binding EmbLocalPath, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{DynamicResource ArabicTextBox}"
+                                             FlowDirection="LeftToRight"
+                                             Margin="0,0,8,0"/>
+                                    <Button Grid.Column="1"
+                                            Content="استعراض..."
+                                            Command="{Binding BrowseEmbeddingModelCommand}"
+                                            Style="{DynamicResource SecondaryButton}"
+                                            Padding="16,8"
+                                            MinWidth="100"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- Download option -->
+                            <RadioButton Style="{StaticResource WizardRadio}"
+                                         IsChecked="{Binding EmbDownloadUrl}"
+                                         GroupName="EmbSource">
+                                <TextBlock Text="⬇️ تحميل من رابط"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            </RadioButton>
+
+                            <StackPanel Margin="28,0,0,12"
+                                        Visibility="{Binding EmbDownloadUrl, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Style="{StaticResource WizardLabel}"
+                                           Text="رابط التحميل:"/>
+                                <TextBox Text="{Binding EmbDownloadUrlText, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{DynamicResource ArabicTextBox}"
+                                         FlowDirection="LeftToRight"/>
+                            </StackPanel>
+
+                            <!-- Model filename -->
+                            <TextBlock Style="{StaticResource WizardLabel}"
+                                       Text="اسم ملف النموذج:"/>
+                            <TextBox Text="{Binding EmbModelFileName, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource ArabicTextBox}"
+                                     FlowDirection="LeftToRight"
+                                     MaxWidth="400"
+                                     HorizontalAlignment="Right"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Status message -->
+                    <TextBlock Text="{Binding EmbStatusMessage}"
+                               FontFamily="{DynamicResource ArabicFont}"
+                               FontSize="13"
+                               Margin="0,12,0,0"
+                               TextWrapping="Wrap">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding EmbStatusMessage}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- ════ Step 3: Progress ════ -->
+                <StackPanel x:Name="StepProgress">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <TextBlock Text="جارٍ إعداد النماذج..."
+                               Style="{DynamicResource SectionHeader}"
+                               FontSize="18"
+                               Margin="0,0,0,24"/>
+
+                    <!-- Overall progress -->
+                    <TextBlock Text="التقدم الإجمالي"
+                               Style="{StaticResource WizardLabel}"/>
+                    <ProgressBar Value="{Binding OverallProgress}"
+                                 Maximum="1"
+                                 Height="8"
+                                 Style="{DynamicResource IngestionProgress}"
+                                 Margin="0,4,0,16"/>
+
+                    <!-- Current file progress -->
+                    <TextBlock Text="{Binding ProgressStatusText}"
+                               Style="{DynamicResource BodyText}"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,8"/>
+
+                    <ProgressBar Value="{Binding CurrentFileProgress}"
+                                 Maximum="1"
+                                 Height="14"
+                                 Style="{DynamicResource IngestionProgress}"
+                                 Margin="0,0,0,8"/>
+
+                    <TextBlock Text="{Binding ProgressDetailText}"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               FontFamily="{DynamicResource ArabicFont}"
+                               FontSize="12"
+                               FlowDirection="LeftToRight"
+                               HorizontalAlignment="Left"/>
+
+                    <!-- Cancel button during processing -->
+                    <Button Content="إلغاء"
+                            Command="{Binding CancelCommand}"
+                            Style="{DynamicResource SecondaryButton}"
+                            HorizontalAlignment="Left"
+                            Margin="0,24,0,0"
+                            Padding="24,10"
+                            Visibility="{Binding CanCancel, Converter={StaticResource BoolToVis}}"/>
+                </StackPanel>
+
+                <!-- ════ Step 4: Complete ════ -->
+                <StackPanel x:Name="StepComplete">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <!-- Success icon -->
+                    <TextBlock FontSize="48"
+                               HorizontalAlignment="Center"
+                               Margin="0,16,0,16">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="❌"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SetupSucceeded}" Value="True">
+                                        <Setter Property="Text" Value="✅"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <TextBlock Text="{Binding CompletionMessage}"
+                               Style="{DynamicResource BodyText}"
+                               FontSize="16"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,16"/>
+
+                    <!-- Error details if any -->
+                    <Border Background="{DynamicResource SurfaceLightBrush}"
+                            CornerRadius="6"
+                            Padding="16"
+                            Margin="0,8,0,0">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ErrorDetails}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding ErrorDetails}"
+                                   FontFamily="{DynamicResource MonoFont}"
+                                   Foreground="{DynamicResource DangerBrush}"
+                                   FlowDirection="LeftToRight"
+                                   TextWrapping="Wrap"
+                                   FontSize="12"/>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- ══════════════════════════════════════════
+             Footer Navigation Buttons
+             ══════════════════════════════════════════ -->
+        <Border Grid.Row="2"
+                Background="{DynamicResource PrimaryBrush}"
+                Padding="24,14"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Cancel -->
+                <Button Grid.Column="0"
+                        Content="إلغاء"
+                        Command="{Binding CancelCommand}"
+                        Padding="20,10"
+                        MinWidth="90">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
+                <!-- Back -->
+                <Button Grid.Column="2"
+                        Content="→ السابق"
+                        Command="{Binding PreviousStepCommand}"
+                        Padding="20,10"
+                        MinWidth="90"
+                        Margin="0,0,8,0">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="0">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
+                <!-- Next -->
+                <Button Grid.Column="3"
+                        Content="التالي ←"
+                        Command="{Binding NextStepCommand}"
+                        Padding="20,10"
+                        MinWidth="120">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
+                <!-- Finish (only on Step 4) -->
+                <Button Grid.Column="3"
+                        Content="إنهاء"
+                        Command="{Binding FinishCommand}"
+                        Padding="20,10"
+                        MinWidth="120">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

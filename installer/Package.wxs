@@ -1,0 +1,218 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    LegalAI Desktop — WiX v5 MSI Installer
+    ═══════════════════════════════════════════
+    Evidence-Constrained Legal Decision Support System (LCDSS)
+
+    Key design points:
+    • Single MSI file for enterprise / air-gapped deployment
+    • Bundles ~10 GB GGUF model + AraBERT ONNX as selectable features
+    • per-Machine install into Program Files\LegalAI
+    • Data directory in %LOCALAPPDATA%\LegalAI\Data
+    • Arabic + English bilingual UI strings
+    • Silent install support: msiexec /i LegalAI-Setup.msi /qn
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <Package Name="$(var.ProductNameEn)"
+           Manufacturer="$(var.Manufacturer)"
+           Version="$(var.ProductVersion)"
+           UpgradeCode="$(var.UpgradeCode)"
+           Language="1025"
+           Codepage="1256"
+           InstallerVersion="500"
+           Compressed="yes"
+           Scope="perMachine">
+
+    <!-- ═══ Upgrade logic ═══ -->
+    <MajorUpgrade DowngradeErrorMessage=
+        "إصدار أحدث مثبت بالفعل. A newer version is already installed."
+        AllowSameVersionUpgrades="yes"/>
+
+    <!-- ═══ Single embedded CAB for offline deployment ═══ -->
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high"/>
+
+    <!-- ═══ System requirements ═══ -->
+    <Launch Condition="VersionNT64"
+            Message="يتطلب هذا التطبيق نظام Windows 64-بت.&#13;&#10;This application requires 64-bit Windows."/>
+
+    <!-- ═══ Feature tree ═══ -->
+    <Feature Id="CoreFeature"
+             Title="LegalAI Desktop"
+             Description="نظام الذكاء القانوني المقيد بالأدلة — التطبيق الأساسي"
+             Level="1"
+             ConfigurableDirectory="INSTALLDIR"
+             AllowAbsent="no">
+      <ComponentGroupRef Id="AppFiles"/>
+      <ComponentRef Id="DesktopShortcutComp"/>
+      <ComponentRef Id="StartMenuShortcutComp"/>
+      <ComponentRef Id="DataDirectoryComp"/>
+      <ComponentRef Id="ModelsDirectoryComp"/>
+      <ComponentRef Id="AppDataRootComp"/>
+      <ComponentRef Id="RegistryComp"/>
+    </Feature>
+
+    <Feature Id="ModelFeature"
+             Title="LLM Model — Qwen 2.5 14B Q5_K_M"
+             Description="نموذج اللغة الكبير (~10 جيجابايت) — مطلوب للاستعلام القانوني"
+             Level="1"
+             AllowAbsent="yes">
+      <ComponentGroupRef Id="ModelFiles"/>
+    </Feature>
+
+    <Feature Id="EmbeddingFeature"
+             Title="AraBERT Embedding Model (ONNX)"
+             Description="نموذج التضمين العربي — مطلوب لفهرسة الوثائق"
+             Level="1"
+             AllowAbsent="no">
+      <ComponentGroupRef Id="EmbeddingFiles"/>
+    </Feature>
+
+    <!-- ═══ UI ═══ -->
+    <ui:WixUI Id="WixUI_FeatureTree"
+              InstallDirectory="INSTALLDIR"/>
+    <UIRef Id="WixUI_ErrorProgressText"/>
+
+    <!-- ═══ Icon / ARP ═══ -->
+    <Icon Id="LegalAI.ico" SourceFile="Resources\LegalAI.ico"/>
+    <Property Id="ARPPRODUCTICON" Value="LegalAI.ico"/>
+    <Property Id="ARPHELPLINK"    Value="https://legalai.local"/>
+    <Property Id="ARPURLINFOABOUT" Value="https://legalai.local"/>
+
+  </Package>
+
+  <!-- ══════════════════════════════════════
+       DIRECTORY LAYOUT
+       ══════════════════════════════════════ -->
+  <Fragment>
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLDIR" Name="LegalAI">
+        <Directory Id="ModelsDir" Name="Models"/>
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="DesktopFolder"/>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="StartMenuDir" Name="نظام الذكاء القانوني"/>
+    </StandardDirectory>
+
+    <!-- Data directory: %LOCALAPPDATA%\LegalAI\Data -->
+    <StandardDirectory Id="LocalAppDataFolder">
+      <Directory Id="LegalAIAppData" Name="LegalAI">
+        <Directory Id="LegalAIDataDir"   Name="Data"/>
+        <Directory Id="LegalAIModelsDir" Name="Models"/>
+      </Directory>
+    </StandardDirectory>
+  </Fragment>
+
+  <!-- ══════════════════════════════════════
+       SHORTCUTS + REGISTRY
+       ══════════════════════════════════════ -->
+  <Fragment>
+    <!-- Desktop shortcut -->
+    <Component Id="DesktopShortcutComp"
+               Directory="DesktopFolder"
+               Guid="A1B2C3D4-E5F6-7890-ABCD-EF1234567890">
+      <Shortcut Id="DesktopShortcutLink"
+                Name="نظام الذكاء القانوني"
+                Description="Evidence-Constrained Legal Decision Support System"
+                Target="[INSTALLDIR]LegalAI.Desktop.exe"
+                WorkingDirectory="INSTALLDIR"
+                Icon="LegalAI.ico"/>
+      <RegistryValue Root="HKCU"
+                     Key="Software\LegalAI"
+                     Name="DesktopShortcut"
+                     Type="integer" Value="1" KeyPath="yes"/>
+    </Component>
+
+    <!-- Start menu shortcut -->
+    <Component Id="StartMenuShortcutComp"
+               Directory="StartMenuDir"
+               Guid="B2C3D4E5-F6A7-8901-BCDE-F23456789012">
+      <Shortcut Id="StartMenuLink"
+                Name="نظام الذكاء القانوني"
+                Description="Evidence-Constrained Legal Decision Support System"
+                Target="[INSTALLDIR]LegalAI.Desktop.exe"
+                WorkingDirectory="INSTALLDIR"
+                Icon="LegalAI.ico"/>
+      <RemoveFolder Id="RemoveStartMenuDir" On="uninstall"/>
+      <RegistryValue Root="HKCU"
+                     Key="Software\LegalAI"
+                     Name="StartMenuShortcut"
+                     Type="integer" Value="1" KeyPath="yes"/>
+    </Component>
+
+    <!-- Data directory created on install -->
+    <Component Id="DataDirectoryComp"
+               Directory="LegalAIDataDir"
+               Guid="C3D4E5F6-A7B8-9012-CDEF-345678901234">
+      <CreateFolder/>
+      <RemoveFolder Id="RemoveLegalAIDataDir" On="uninstall"/>
+      <RegistryValue Root="HKCU"
+                     Key="Software\LegalAI"
+                     Name="DataDirCreated"
+                     Type="integer" Value="1" KeyPath="yes"/>
+    </Component>
+
+    <Component Id="ModelsDirectoryComp"
+               Directory="LegalAIModelsDir"
+               Guid="A7D69010-2B9E-4E31-8B17-4A63F4D6A8F1">
+      <CreateFolder/>
+      <RemoveFolder Id="RemoveLegalAIModelsDir" On="uninstall"/>
+      <RegistryValue Root="HKCU"
+                     Key="Software\LegalAI"
+                     Name="ModelsDirCreated"
+                     Type="integer" Value="1" KeyPath="yes"/>
+    </Component>
+
+    <Component Id="AppDataRootComp"
+               Directory="LegalAIAppData"
+               Guid="0CBE7F3B-14EE-4AF4-B57A-FF43CE6D83C4">
+      <CreateFolder/>
+      <RemoveFolder Id="RemoveLegalAIAppData" On="uninstall"/>
+      <RegistryValue Root="HKCU"
+                     Key="Software\LegalAI"
+                     Name="AppDataRootCreated"
+                     Type="integer" Value="1" KeyPath="yes"/>
+    </Component>
+
+    <!-- Install path in registry (for upgrades / model location) -->
+    <Component Id="RegistryComp"
+               Directory="INSTALLDIR"
+               Guid="D4E5F6A7-B8C9-0123-DEFA-456789012345">
+      <RegistryKey Root="HKLM" Key="Software\LegalAI">
+        <RegistryValue Name="InstallDir"  Type="string" Value="[INSTALLDIR]"/>
+        <RegistryValue Name="Version"     Type="string" Value="$(var.ProductVersion)"/>
+        <RegistryValue Name="ModelsDir"   Type="string" Value="[ModelsDir]"/>
+      </RegistryKey>
+    </Component>
+  </Fragment>
+
+  <!-- ══════════════════════════════════════
+       MODEL FILES (selectable feature)
+       ══════════════════════════════════════ -->
+  <Fragment>
+    <ComponentGroup Id="ModelFiles" Directory="ModelsDir">
+      <Component Id="LlmModelFileComp"
+                 Guid="E5F6A7B8-C9D0-1234-EFAB-567890123456">
+        <File Id="QwenModel"
+            Source="$(var.ModelsPath)\$(var.LlmModelFileName)"
+            Name="$(var.LlmModelFileName)"
+              KeyPath="yes"/>
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="EmbeddingFiles" Directory="ModelsDir">
+      <Component Id="EmbeddingModelFileComp"
+                 Guid="F6A7B8C9-D0E1-2345-FABC-678901234567">
+        <File Id="AraBertModel"
+              Source="$(var.ModelsPath)\arabert.onnx"
+              Name="arabert.onnx"
+              KeyPath="yes"/>
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+
+</Wix>
