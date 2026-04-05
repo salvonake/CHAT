@@ -86,6 +86,10 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private string _dataDirectory = "";
 
+    // ── UI ──
+    [ObservableProperty]
+    private string _uiCulture = "fr-FR";
+
     // ── State ──
     [ObservableProperty]
     private string _saveStatus = "";
@@ -151,6 +155,11 @@ public partial class SettingsViewModel : ObservableObject
                 if (ing.TryGetProperty("WatchDirectory", out var wd)) WatchDirectory = wd.GetString() ?? "";
                 if (ing.TryGetProperty("MaxParallelFiles", out var mpf)) MaxParallelFiles = mpf.GetInt32();
             }
+
+            if (root.TryGetProperty("Ui", out var ui))
+            {
+                if (ui.TryGetProperty("Culture", out var culture)) UiCulture = culture.GetString() ?? "fr-FR";
+            }
         }
         catch (Exception ex)
         {
@@ -189,6 +198,10 @@ public partial class SettingsViewModel : ObservableObject
                 {
                     ["WatchDirectory"] = WatchDirectory,
                     ["MaxParallelFiles"] = MaxParallelFiles
+                },
+                ["Ui"] = new Dictionary<string, object>
+                {
+                    ["Culture"] = UiCulture
                 },
                 ["Security"] = new Dictionary<string, object>
                 {

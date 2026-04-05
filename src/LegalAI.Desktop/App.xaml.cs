@@ -1,6 +1,10 @@
 ﻿using System.IO;
 using System.Net.Http;
+using System.Globalization;
+using System.Runtime.InteropServices;
+using System.Threading;
 using System.Windows;
+using System.Windows.Markup;
 using System.Windows.Threading;
 using Serilog;
 using Serilog.Events;
@@ -37,6 +41,25 @@ public partial class App : System.Windows.Application
 {
     private static Mutex? _singleInstanceMutex;
     private IHost? _host;
+    private const int SwRestore = 9;
+    private bool _isArabicUi;
+
+    private delegate bool EnumWindowsProc(nint hWnd, nint lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool ShowWindowAsync(nint hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetForegroundWindow(nint hWnd);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, nint lParam);
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(nint hWnd, out uint lpdwProcessId);
+
+    [DllImport("user32.dll")]
+    private static extern bool IsWindowVisible(nint hWnd);
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -44,6 +67,12 @@ public partial class App : System.Windows.Application
         _singleInstanceMutex = new Mutex(true, "Global\\LegalAI_LCDSS_SingleInstance", out bool createdNew);
         if (!createdNew)
         {
+            if (TryActivateExistingInstanceWindow())
+            {
+                Shutdown(0);
+                return;
+            }
+
             System.Windows.MessageBox.Show(
                 "نظام الدعم القانوني يعمل بالفعل.",
                 "تحذير",
@@ -64,7 +93,7 @@ public partial class App : System.Windows.Application
         var basePath = AppDomain.CurrentDomain.BaseDirectory;
         var bootstrapConfiguration = new ConfigurationBuilder()
             .SetBasePath(basePath)
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
             .AddJsonFile("appsettings.user.json", optional: true, reloadOnChange: true)
             .Build();
 
@@ -85,10 +114,13 @@ public partial class App : System.Windows.Application
         var dataUserConfigPath = Path.Combine(dataDir, "appsettings.user.json");
         var configuration = new ConfigurationBuilder()
             .SetBasePath(basePath)
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
             .AddJsonFile("appsettings.user.json", optional: true, reloadOnChange: true)
             .AddJsonFile(dataUserConfigPath, optional: true, reloadOnChange: true)
             .Build();
+
+        var uiCulture = configuration["Ui:Culture"];
+        _isArabicUi = ApplyUiCulture(uiCulture);
 
         var paths = new DataPaths
         {
@@ -289,6 +321,16 @@ public partial class App : System.Windows.Application
             var wizardVm = _host.Services.GetRequiredService<SetupWizardViewModel>();
             var wizardWindow = new SetupWizardWindow();
             wizardWindow.BindViewModel(wizardVm);
+            wizardWindow.FlowDirection = _isArabicUi ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
+            wizardWindow.Loaded += (_, _) =>
+            {
+                if (wizardWindow.WindowState == WindowState.Minimized)
+                    wizardWindow.WindowState = WindowState.Normal;
+                wizardWindow.Activate();
+                wizardWindow.Topmost = true;
+                wizardWindow.Topmost = false;
+                wizardWindow.Focus();
+            };
             wizardWindow.ShowDialog();
 
             if (!wizardVm.Completed)
@@ -300,8 +342,15 @@ public partial class App : System.Windows.Application
         // ── Show Main Window ──
         var mainWindow = _host.Services.GetRequiredService<MainWindow>();
         mainWindow.DataContext = _host.Services.GetRequiredService<MainViewModel>();
+        mainWindow.FlowDirection = _isArabicUi ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
         MainWindow = mainWindow;
         mainWindow.Show();
+        if (mainWindow.WindowState == WindowState.Minimized)
+            mainWindow.WindowState = WindowState.Normal;
+        mainWindow.Activate();
+        mainWindow.Topmost = true;
+        mainWindow.Topmost = false;
+        mainWindow.Focus();
 
         // ── Initialize Fail-Closed Guard ──
         var guard = _host.Services.GetRequiredService<FailClosedGuard>();
@@ -392,5 +441,91 @@ public partial class App : System.Windows.Application
             Log.Fatal(ex, "═══ LegalAI LCDSS FATAL ═══ Source: {Source}", source);
         }
         catch { /* last resort — nothing we can do */ }
+    }
+
+    private static bool TryActivateExistingInstanceWindow()
+    {
+        try
+        {
+            var current = System.Diagnostics.Process.GetCurrentProcess();
+            var existingProcesses = System.Diagnostics.Process
+                .GetProcessesByName(current.ProcessName)
+                .Where(p => p.Id != current.Id)
+                .ToList();
+
+            foreach (var process in existingProcesses)
+            {
+                var hwnd = process.MainWindowHandle;
+                if (hwnd == nint.Zero)
+                {
+                    hwnd = FindVisibleTopLevelWindowForProcess(process.Id);
+                }
+
+                if (hwnd == nint.Zero)
+                    continue;
+
+                ShowWindowAsync(hwnd, SwRestore);
+                SetForegroundWindow(hwnd);
+                return true;
+            }
+
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static nint FindVisibleTopLevelWindowForProcess(int processId)
+    {
+        nint found = nint.Zero;
+        EnumWindows((hWnd, lParam) =>
+        {
+            GetWindowThreadProcessId(hWnd, out var pid);
+            if (pid == (uint)processId && IsWindowVisible(hWnd))
+            {
+                found = hWnd;
+                return false;
+            }
+
+            return true;
+        }, nint.Zero);
+
+        return found;
+    }
+
+    private static bool ApplyUiCulture(string? configuredCulture)
+    {
+        var cultureName = string.IsNullOrWhiteSpace(configuredCulture)
+            ? "fr-FR"
+            : configuredCulture.Trim();
+
+        CultureInfo culture;
+        try
+        {
+            culture = CultureInfo.GetCultureInfo(cultureName);
+        }
+        catch
+        {
+            culture = CultureInfo.GetCultureInfo("fr-FR");
+        }
+
+        CultureInfo.DefaultThreadCurrentCulture = culture;
+        CultureInfo.DefaultThreadCurrentUICulture = culture;
+        Thread.CurrentThread.CurrentCulture = culture;
+        Thread.CurrentThread.CurrentUICulture = culture;
+
+        try
+        {
+            FrameworkElement.LanguageProperty.OverrideMetadata(
+                typeof(FrameworkElement),
+                new FrameworkPropertyMetadata(XmlLanguage.GetLanguage(culture.IetfLanguageTag)));
+        }
+        catch
+        {
+        }
+
+        return culture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
     }
 }
