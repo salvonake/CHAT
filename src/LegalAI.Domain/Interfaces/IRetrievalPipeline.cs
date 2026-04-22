@@ -16,6 +16,17 @@ public interface IRetrievalPipeline
         RetrievalConfig config,
         string? caseNamespace = null,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Executes retrieval with explicit scope filters for data-plane enforcement.
+    /// </summary>
+    Task<RetrievalResult> RetrieveAsync(
+        string query,
+        RetrievalConfig config,
+        string? caseNamespace,
+        CancellationToken ct,
+        string? domainId,
+        string? datasetScope);
 }
 
 public sealed class RetrievalResult

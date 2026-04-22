@@ -27,8 +27,7 @@
 
     <!-- ═══ Upgrade logic ═══ -->
     <MajorUpgrade DowngradeErrorMessage=
-        "إصدار أحدث مثبت بالفعل. A newer version is already installed."
-        AllowSameVersionUpgrades="yes"/>
+      "إصدار أحدث مثبت بالفعل. A newer version is already installed."/>
 
     <!-- ═══ Single embedded CAB for offline deployment ═══ -->
     <MediaTemplate EmbedCab="yes" CompressionLevel="high"/>

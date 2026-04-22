@@ -7,11 +7,11 @@
         xmlns:vm="clr-namespace:LegalAI.Desktop.ViewModels"
         xmlns:v="clr-namespace:LegalAI.Desktop.Views"
         mc:Ignorable="d"
-        Title="نظام الدعم القانوني — LCDSS"
+        Title="LegalAI — LCDSS"
         Height="900" Width="1400"
         MinHeight="650" MinWidth="900"
         WindowStartupLocation="CenterScreen"
-        FlowDirection="RightToLeft"
+        FlowDirection="LeftToRight"
         Background="{DynamicResource BackgroundBrush}">
 
     <Window.Resources>
@@ -53,7 +53,7 @@
                                FontSize="22" FontWeight="Bold"
                                Foreground="{DynamicResource AccentBrush}"
                                HorizontalAlignment="Center" />
-                    <TextBlock Text="نظام الدعم القانوني"
+                    <TextBlock Text="LegalAI"
                                FontSize="12"
                                Foreground="{DynamicResource MutedTextBrush}"
                                HorizontalAlignment="Center"
@@ -65,7 +65,7 @@
                 <!-- Status Bar (bottom) -->
                 <StackPanel DockPanel.Dock="Bottom" Margin="12,0,12,12">
                     <Separator Background="{DynamicResource BorderBrush}" Margin="0,0,0,8" />
-                    <TextBlock Text="{Binding VectorCount, StringFormat='📄 {0:N0} متجه'}"
+                    <TextBlock Text="{Binding VectorCount, StringFormat='📄 {0:N0} vectors'}"
                                FontSize="11"
                                Foreground="{DynamicResource MutedTextBrush}" />
                     <TextBlock Text="{Binding StatusText}"
@@ -94,23 +94,23 @@
 
                 <!-- Navigation Buttons -->
                 <StackPanel Margin="8,8,8,0">
-                    <Button Content="📝  استعلام قانوني"
+                        <Button Content="📝  Legal Query"
                             Command="{Binding NavigateToAskCommand}"
                             Style="{DynamicResource NavButton}"
                             Margin="0,2" />
-                    <Button Content="💬  محادثة"
+                        <Button Content="💬  Chat"
                             Command="{Binding NavigateToChatCommand}"
                             Style="{DynamicResource NavButton}"
                             Margin="0,2" />
-                    <Button Content="📁  المستندات"
+                        <Button Content="📁  Documents"
                             Command="{Binding NavigateToDocumentsCommand}"
                             Style="{DynamicResource NavButton}"
                             Margin="0,2" />
-                    <Button Content="⚙️  الإعدادات"
+                        <Button Content="⚙️  Settings"
                             Command="{Binding NavigateToSettingsCommand}"
                             Style="{DynamicResource NavButton}"
                             Margin="0,2" />
-                    <Button Content="🩺  صحة النظام"
+                        <Button Content="🩺  System Health"
                             Command="{Binding NavigateToHealthCommand}"
                             Style="{DynamicResource NavButton}"
                             Margin="0,2" />
@@ -147,7 +147,7 @@
                                    FontSize="19"
                                    FontWeight="Bold"
                                    Foreground="{DynamicResource TextPrimaryBrush}"/>
-                        <TextBlock Text="نظام دعم القرار القانوني المقيد بالأدلة"
+                        <TextBlock Text="Evidence-constrained legal decision support"
                                    Margin="0,2,0,0"
                                    Foreground="{DynamicResource TextSecondaryBrush}"/>
                     </StackPanel>
@@ -189,7 +189,7 @@
                     Padding="14,10"
                     Visibility="{Binding ShowSystemBlockBanner, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Collapsed}">
                 <StackPanel>
-                    <TextBlock Text="⚠️ وضع المكتبة فقط — الاستعلام معطّل"
+                    <TextBlock Text="⚠️ Library-only mode — querying disabled"
                                Foreground="White" FontWeight="Bold"
                                FontSize="14" />
                     <TextBlock Text="{Binding SystemBlockReason}"
@@ -206,3 +206,4 @@
         </Grid>
     </Grid>
 </Window>
+

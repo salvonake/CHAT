@@ -5,8 +5,10 @@ using LegalAI.Application.Commands;
 using LegalAI.Domain.Entities;
 using LegalAI.Domain.Interfaces;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
+using System.Security.Claims;
 
 namespace LegalAI.UnitTests.Api;
 
@@ -15,12 +17,35 @@ public sealed class DocumentsControllerTests
     private readonly Mock<IMediator> _mediator = new();
     private readonly Mock<IDocumentStore> _docStore = new();
     private readonly Mock<IVectorStore> _vectorStore = new();
+    private readonly Mock<IUserDomainGrantStore> _domainGrants = new();
+    private readonly Mock<IDatasetStore> _datasetStore = new();
+    private readonly Mock<IDomainModuleRegistry> _domainRegistry = new();
     private readonly DocumentsController _sut;
 
     public DocumentsControllerTests()
     {
+        _domainRegistry.SetupGet(x => x.ActiveDomainId).Returns("legal");
+
         _sut = new DocumentsController(
-            _mediator.Object, _docStore.Object, _vectorStore.Object);
+            _mediator.Object,
+            _docStore.Object,
+            _vectorStore.Object,
+            _domainGrants.Object,
+            _datasetStore.Object,
+            _domainRegistry.Object);
+
+        _sut.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(
+                    new ClaimsIdentity(
+                    [
+                        new Claim(ClaimTypes.Role, "Admin")
+                    ],
+                    "TestAuth"))
+            }
+        };
     }
 
     // ─── GetDocuments ────────────────────────────────────────────
@@ -375,5 +400,121 @@ public sealed class DocumentsControllerTests
         var result = await _sut.GetStats(CancellationToken.None);
 
         result.Should().BeOfType<OkObjectResult>();
+    }
+
+    [Fact]
+    public async Task IngestDocument_NonAdminWithoutDomainGrant_ReturnsForbid()
+    {
+        var nonAdminController = new DocumentsController(
+            _mediator.Object,
+            _docStore.Object,
+            _vectorStore.Object,
+            _domainGrants.Object,
+            _datasetStore.Object,
+            _domainRegistry.Object)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(
+                        new ClaimsIdentity(
+                        [
+                            new Claim(ClaimTypes.NameIdentifier, "user-1"),
+                            new Claim(ClaimTypes.Role, "Analyst")
+                        ],
+                        "TestAuth"))
+                }
+            }
+        };
+
+        var tmpFile = Path.GetTempFileName();
+        try
+        {
+            _domainGrants
+                .Setup(g => g.HasAccessAsync("user-1", "legal", null, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(false);
+
+            var result = await nonAdminController.IngestDocument(
+                new IngestRequest { FilePath = tmpFile, DomainId = "legal" },
+                CancellationToken.None);
+
+            result.Should().BeOfType<ForbidResult>();
+            _mediator.Verify(m => m.Send(It.IsAny<IngestDocumentCommand>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+        finally
+        {
+            File.Delete(tmpFile);
+        }
+    }
+
+    [Fact]
+    public async Task GetDocuments_NonAdmin_OnlyReturnsGrantedDomain()
+    {
+        var nonAdminController = new DocumentsController(
+            _mediator.Object,
+            _docStore.Object,
+            _vectorStore.Object,
+            _domainGrants.Object,
+            _datasetStore.Object,
+            _domainRegistry.Object)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(
+                        new ClaimsIdentity(
+                        [
+                            new Claim(ClaimTypes.NameIdentifier, "user-1"),
+                            new Claim(ClaimTypes.Role, "Analyst")
+                        ],
+                        "TestAuth"))
+                }
+            }
+        };
+
+        _docStore.Setup(d => d.GetAllAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                new LegalDocument
+                {
+                    Id = "doc-legal",
+                    FilePath = @"C:\legal.pdf",
+                    FileName = "legal.pdf",
+                    ContentHash = "hash-1",
+                    DomainId = "legal",
+                    Status = DocumentStatus.Indexed
+                },
+                new LegalDocument
+                {
+                    Id = "doc-med",
+                    FilePath = @"C:\medical.pdf",
+                    FileName = "medical.pdf",
+                    ContentHash = "hash-2",
+                    DomainId = "medical",
+                    Status = DocumentStatus.Indexed
+                }
+            ]);
+
+        _domainGrants.Setup(g => g.GetForUserAsync("user-1", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                new UserDomainGrant
+                {
+                    UserId = "user-1",
+                    DomainId = "legal"
+                }
+            ]);
+
+        _datasetStore.Setup(d => d.GetAllAsync(true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
+        var result = await nonAdminController.GetDocuments(CancellationToken.None);
+
+        var ok = result.Should().BeOfType<OkObjectResult>().Subject;
+        var docs = ok.Value.Should().BeAssignableTo<IEnumerable<DocumentDto>>().Subject.ToList();
+        docs.Should().HaveCount(1);
+        docs[0].Id.Should().Be("doc-legal");
     }
 }

@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -121,7 +121,7 @@ public partial class DocumentsViewModel : ObservableObject
                         FileName = Path.GetFileName(q.FilePath),
                         FilePath = q.FilePath,
                         Status = "Quarantined",
-                        StatusArabic = "محجور",
+                        StatusArabic = "Quarantined",
                         FailureReason = q.Reason
                     });
                 }
@@ -159,7 +159,7 @@ public partial class DocumentsViewModel : ObservableObject
             foreach (var filePath in files)
             {
                 IngestionProgress++;
-                IngestionStatus = $"جارٍ فهرسة: {Path.GetFileName(filePath)} ({IngestionProgress}/{IngestionTotal})";
+                IngestionStatus = $"Indexing: {Path.GetFileName(filePath)} ({IngestionProgress}/{IngestionTotal})";
 
                 try
                 {
@@ -192,7 +192,7 @@ public partial class DocumentsViewModel : ObservableObject
         finally
         {
             IsIngesting = false;
-            IngestionStatus = $"اكتمل — {IngestionTotal} ملف";
+            IngestionStatus = $"Completed - {IngestionTotal} files";
         }
     }
 
@@ -206,7 +206,7 @@ public partial class DocumentsViewModel : ObservableObject
         {
             Filter = "PDF Files (*.pdf)|*.pdf",
             Multiselect = true,
-            Title = "اختر ملفات PDF للفهرسة"
+            Title = "Select PDF files for indexing"
         };
 
         // Note: This runs on UI thread — dialog is modal
@@ -222,7 +222,7 @@ public partial class DocumentsViewModel : ObservableObject
         if (string.IsNullOrWhiteSpace(WatchDirectory)) return;
 
         IsIngesting = true;
-        IngestionStatus = "جارٍ فهرسة مجلد المراقبة...";
+        IngestionStatus = "Indexing watch directory...";
 
         try
         {
@@ -233,13 +233,13 @@ public partial class DocumentsViewModel : ObservableObject
                 UserId = "Desktop"
             });
 
-            IngestionStatus = $"اكتمل: {result.SuccessCount} نجح, {result.FailedCount} فشل, {result.SkippedCount} تم تخطيه";
+            IngestionStatus = $"Completed: {result.SuccessCount} succeeded, {result.FailedCount} failed, {result.SkippedCount} skipped";
             await RefreshDocumentsAsync();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Directory ingestion failed");
-            IngestionStatus = $"خطأ: {ex.Message}";
+            IngestionStatus = $"Error: {ex.Message}";
         }
         finally
         {
@@ -263,11 +263,11 @@ public partial class DocumentsViewModel : ObservableObject
 
     private static string GetStatusArabic(DocumentStatus status) => status switch
     {
-        DocumentStatus.Pending => "بانتظار الفهرسة",
-        DocumentStatus.Indexing => "جارٍ الفهرسة",
-        DocumentStatus.Indexed => "مفهرس",
-        DocumentStatus.Failed => "فشل",
-        DocumentStatus.Quarantined => "محجور",
+        DocumentStatus.Pending => "Pending indexing",
+        DocumentStatus.Indexing => "Indexing",
+        DocumentStatus.Indexed => "Indexed",
+        DocumentStatus.Failed => "Failed",
+        DocumentStatus.Quarantined => "Quarantined",
         _ => status.ToString()
     };
 }
@@ -286,3 +286,4 @@ public sealed class DocumentItem
     public int FailureCount { get; init; }
     public string? FailureReason { get; init; }
 }
+

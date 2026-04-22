@@ -141,7 +141,7 @@ public sealed class ChatViewModelTests : IDisposable
 
         vm.Messages.Should().HaveCount(1);
         vm.Messages[0].Role.Should().Be(ChatRole.System);
-        vm.Messages[0].Text.Should().Contain("مرحباً");
+        vm.Messages[0].Text.Should().Contain("Welcome");
     }
 
     [Fact]
@@ -200,7 +200,7 @@ public sealed class ChatViewModelTests : IDisposable
 
         var assistant = vm.Messages[2];
         assistant.ConfidenceScore.Should().Be(0.88);
-        assistant.ConfidenceLabel.Should().Contain("ثقة عالية");
+        assistant.ConfidenceLabel.Should().Contain("High confidence");
         assistant.ConfidenceColor.Should().Be("#2E7D32");
     }
 
@@ -315,7 +315,7 @@ public sealed class ChatViewModelTests : IDisposable
         vm.InputText = "سؤال";
         await vm.SendMessageCommand.ExecuteAsync(null);
 
-        vm.Messages[2].ConfidenceLabel.Should().Contain("ثقة عالية");
+        vm.Messages[2].ConfidenceLabel.Should().Contain("High confidence");
         vm.Messages[2].ConfidenceColor.Should().Be("#2E7D32");
     }
 
@@ -327,7 +327,7 @@ public sealed class ChatViewModelTests : IDisposable
         vm.InputText = "سؤال";
         await vm.SendMessageCommand.ExecuteAsync(null);
 
-        vm.Messages[2].ConfidenceLabel.Should().Contain("ثقة متوسطة");
+        vm.Messages[2].ConfidenceLabel.Should().Contain("Medium confidence");
         vm.Messages[2].ConfidenceColor.Should().Be("#F57F17");
     }
 
@@ -339,7 +339,7 @@ public sealed class ChatViewModelTests : IDisposable
         vm.InputText = "سؤال";
         await vm.SendMessageCommand.ExecuteAsync(null);
 
-        vm.Messages[2].ConfidenceLabel.Should().Contain("ثقة منخفضة");
+        vm.Messages[2].ConfidenceLabel.Should().Contain("Low confidence");
         vm.Messages[2].ConfidenceColor.Should().Be("#C62828");
     }
 
@@ -358,9 +358,9 @@ public sealed class ChatViewModelTests : IDisposable
 
         var assistant = vm.Messages[2];
         assistant.IsAbstention.Should().BeTrue();
-        assistant.ConfidenceLabel.Should().Be("امتناع عن الإجابة");
+        assistant.ConfidenceLabel.Should().Be("Abstained");
         assistant.ConfidenceColor.Should().Be("#C62828");
-        assistant.Text.Should().Contain("أدلة كافية");
+        assistant.Text.Should().Contain("enough evidence");
     }
 
     // ══════════════════════════════════════
@@ -454,7 +454,7 @@ public sealed class ChatViewModelTests : IDisposable
 
         var assistant = vm.Messages[2];
         assistant.Text.Should().Contain("Pipeline failure");
-        assistant.Text.Should().Contain("خطأ");
+        assistant.Text.Should().Contain("error");
         assistant.IsError.Should().BeTrue();
         assistant.IsStreaming.Should().BeFalse();
         vm.IsProcessing.Should().BeFalse();
@@ -571,7 +571,7 @@ public sealed class ChatViewModelTests : IDisposable
 
         vm.Messages.Should().HaveCount(1);
         vm.Messages[0].Role.Should().Be(ChatRole.System);
-        vm.Messages[0].Text.Should().Contain("مسح");
+        vm.Messages[0].Text.Should().Contain("cleared");
     }
 
     // ══════════════════════════════════════

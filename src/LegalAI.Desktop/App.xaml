@@ -7,7 +7,7 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Resources/Styles/Theme.xaml" />
-                <ResourceDictionary Source="Resources/Strings/Strings.ar.xaml" />
+                <ResourceDictionary Source="Resources/Strings/Strings.en.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

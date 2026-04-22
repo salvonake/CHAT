@@ -18,7 +18,7 @@ namespace LegalAI.Ingestion.Chunking;
 /// 3. Fall back to sliding window for unstructured content
 /// 4. Each chunk carries rich metadata for precision retrieval
 /// </summary>
-public sealed partial class LegalDocumentChunker : IDocumentChunker
+public sealed partial class LegalDocumentChunker : IDomainChunker
 {
     private readonly ILogger<LegalDocumentChunker> _logger;
 

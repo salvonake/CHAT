@@ -129,7 +129,7 @@ public sealed class SetupWizardViewModelTests : IDisposable
 
         await vm.NextStepCommand.ExecuteAsync(null);
 
-        vm.CurrentStep.Should().Be(SetupWizardViewModel.StepLlm);
+        vm.CurrentStep.Should().Be(SetupWizardViewModel.StepDomain);
     }
 
     [Fact]
@@ -138,7 +138,8 @@ public sealed class SetupWizardViewModelTests : IDisposable
         var vm = CreateVm();
         vm.UseLlamaSharp = true;
 
-        // Go to LLM step
+        // Go to Domain step, then LLM step
+        await vm.NextStepCommand.ExecuteAsync(null);
         await vm.NextStepCommand.ExecuteAsync(null);
         vm.CurrentStep.Should().Be(SetupWizardViewModel.StepLlm);
 
@@ -161,6 +162,7 @@ public sealed class SetupWizardViewModelTests : IDisposable
         vm.UseLlamaSharp = true;
 
         await vm.NextStepCommand.ExecuteAsync(null);
+        await vm.NextStepCommand.ExecuteAsync(null);
         vm.CurrentStep.Should().Be(SetupWizardViewModel.StepLlm);
 
         // Leave path empty
@@ -182,12 +184,13 @@ public sealed class SetupWizardViewModelTests : IDisposable
     {
         var vm = CreateVm();
 
-        await vm.NextStepCommand.ExecuteAsync(null);
+        await vm.NextStepCommand.ExecuteAsync(null); // Welcome -> Domain
+        await vm.NextStepCommand.ExecuteAsync(null); // Domain -> LLM
         vm.CurrentStep.Should().Be(SetupWizardViewModel.StepLlm);
 
         vm.PreviousStepCommand.Execute(null);
 
-        vm.CurrentStep.Should().Be(SetupWizardViewModel.StepWelcome);
+        vm.CurrentStep.Should().Be(SetupWizardViewModel.StepDomain);
     }
 
     [Fact]
@@ -196,7 +199,8 @@ public sealed class SetupWizardViewModelTests : IDisposable
         var vm = CreateVm();
 
         // Navigate to Embedding step
-        await vm.NextStepCommand.ExecuteAsync(null);
+        await vm.NextStepCommand.ExecuteAsync(null); // Welcome -> Domain
+        await vm.NextStepCommand.ExecuteAsync(null); // Domain -> LLM
         var ggufPath = Path.Combine(_tempDir, "model.gguf");
         File.WriteAllBytes(ggufPath, [1, 2, 3]);
         vm.LlmLocalPath = ggufPath;
@@ -218,7 +222,8 @@ public sealed class SetupWizardViewModelTests : IDisposable
     public async Task LlmValidation_RejectsNonexistentFile()
     {
         var vm = CreateVm();
-        await vm.NextStepCommand.ExecuteAsync(null);
+        await vm.NextStepCommand.ExecuteAsync(null); // Welcome -> Domain
+        await vm.NextStepCommand.ExecuteAsync(null); // Domain -> LLM
 
         vm.LlmBrowseLocal = true;
         vm.LlmLocalPath = Path.Combine(_tempDir, "nonexistent.gguf");
@@ -233,7 +238,8 @@ public sealed class SetupWizardViewModelTests : IDisposable
     public async Task LlmValidation_RejectsInvalidUrl()
     {
         var vm = CreateVm();
-        await vm.NextStepCommand.ExecuteAsync(null);
+        await vm.NextStepCommand.ExecuteAsync(null); // Welcome -> Domain
+        await vm.NextStepCommand.ExecuteAsync(null); // Domain -> LLM
 
         vm.LlmBrowseLocal = false;
         vm.LlmDownloadUrl = true;
@@ -249,7 +255,8 @@ public sealed class SetupWizardViewModelTests : IDisposable
     public async Task LlmValidation_AcceptsValidUrl()
     {
         var vm = CreateVm();
-        await vm.NextStepCommand.ExecuteAsync(null);
+        await vm.NextStepCommand.ExecuteAsync(null); // Welcome -> Domain
+        await vm.NextStepCommand.ExecuteAsync(null); // Domain -> LLM
 
         vm.LlmBrowseLocal = false;
         vm.LlmDownloadUrl = true;
@@ -270,7 +277,8 @@ public sealed class SetupWizardViewModelTests : IDisposable
         var vm = CreateVm();
 
         // Navigate to Embedding
-        await vm.NextStepCommand.ExecuteAsync(null);
+        await vm.NextStepCommand.ExecuteAsync(null); // Welcome -> Domain
+        await vm.NextStepCommand.ExecuteAsync(null); // Domain -> LLM
         var gguf = Path.Combine(_tempDir, "m.gguf");
         File.WriteAllBytes(gguf, [1]);
         vm.LlmLocalPath = gguf;
@@ -338,13 +346,14 @@ public sealed class SetupWizardViewModelTests : IDisposable
         File.WriteAllBytes(onnxDest, [4, 5, 6]);
 
         // Navigate through wizard with source == destination
-        await vm.NextStepCommand.ExecuteAsync(null); // Welcome → LLM
+        await vm.NextStepCommand.ExecuteAsync(null); // Welcome -> Domain
+        await vm.NextStepCommand.ExecuteAsync(null); // Domain -> LLM
         vm.LlmLocalPath = llmDest;
         vm.LlmBrowseLocal = true;
-        await vm.NextStepCommand.ExecuteAsync(null); // LLM → Embedding
+        await vm.NextStepCommand.ExecuteAsync(null); // LLM -> Embedding
         vm.EmbLocalPath = onnxDest;
         vm.EmbBrowseLocal = true;
-        await vm.NextStepCommand.ExecuteAsync(null); // Embedding → Progress → Complete
+        await vm.NextStepCommand.ExecuteAsync(null); // Embedding -> Progress -> Complete
 
         // Wait for async completion
         await WaitForStep(vm, SetupWizardViewModel.StepComplete, TimeSpan.FromSeconds(5));
@@ -374,7 +383,8 @@ public sealed class SetupWizardViewModelTests : IDisposable
         File.WriteAllBytes(onnxSource, [40, 50, 60]);
 
         // Navigate through wizard
-        await vm.NextStepCommand.ExecuteAsync(null);
+        await vm.NextStepCommand.ExecuteAsync(null); // Welcome -> Domain
+        await vm.NextStepCommand.ExecuteAsync(null); // Domain -> LLM
         vm.LlmLocalPath = llmSource;
         vm.LlmBrowseLocal = true;
         await vm.NextStepCommand.ExecuteAsync(null);
@@ -415,7 +425,8 @@ public sealed class SetupWizardViewModelTests : IDisposable
         // Set a non-routable URL so it fails fast
         vm.OllamaUrl = "http://127.0.0.1:19999";
 
-        await vm.NextStepCommand.ExecuteAsync(null);
+        await vm.NextStepCommand.ExecuteAsync(null); // Welcome -> Domain
+        await vm.NextStepCommand.ExecuteAsync(null); // Domain -> Progress (Ollama)
 
         // Should jump to progress (step 3) then to complete (step 4)
         await WaitForStep(vm, SetupWizardViewModel.StepComplete, TimeSpan.FromSeconds(15));
@@ -432,10 +443,11 @@ public sealed class SetupWizardViewModelTests : IDisposable
     public void StepConstants_AreSequential()
     {
         SetupWizardViewModel.StepWelcome.Should().Be(0);
-        SetupWizardViewModel.StepLlm.Should().Be(1);
-        SetupWizardViewModel.StepEmbedding.Should().Be(2);
-        SetupWizardViewModel.StepProgress.Should().Be(3);
-        SetupWizardViewModel.StepComplete.Should().Be(4);
+        SetupWizardViewModel.StepDomain.Should().Be(1);
+        SetupWizardViewModel.StepLlm.Should().Be(2);
+        SetupWizardViewModel.StepEmbedding.Should().Be(3);
+        SetupWizardViewModel.StepProgress.Should().Be(4);
+        SetupWizardViewModel.StepComplete.Should().Be(5);
     }
 
     // ═══════════════════════════════════════

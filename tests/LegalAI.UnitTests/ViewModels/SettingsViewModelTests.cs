@@ -109,7 +109,7 @@ public sealed class SettingsViewModelTests : IDisposable
     {
         var vm = CreateVm();
         vm.StrictModeLockReason.Should().NotBeNullOrWhiteSpace();
-        vm.StrictModeLockReason.Should().Contain("مقفل", "lock reason should be in Arabic");
+        vm.StrictModeLockReason.Should().Contain("locked", "lock reason should describe immutable strict mode");
     }
 
     [Fact]
@@ -304,7 +304,7 @@ public sealed class SettingsViewModelTests : IDisposable
         await vm.SaveSettingsCommand.ExecuteAsync(null);
 
         vm.SaveStatus.Should().NotBeNullOrWhiteSpace();
-        vm.SaveStatus.Should().Contain("بنجاح", "status message should confirm success in Arabic");
+        vm.SaveStatus.Should().Contain("saved successfully", "status message should confirm success");
     }
 
     [Fact]

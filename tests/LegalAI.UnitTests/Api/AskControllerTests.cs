@@ -4,21 +4,44 @@ using LegalAI.Application.Queries;
 using LegalAI.Domain.Interfaces;
 using LegalAI.Domain.ValueObjects;
 using MediatR;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
+using System.Security.Claims;
 
 namespace LegalAI.UnitTests.Api;
 
 public sealed class AskControllerTests
 {
     private readonly Mock<IMediator> _mediator = new();
+    private readonly Mock<IUserDomainGrantStore> _domainGrants = new();
+    private readonly Mock<IDomainModuleRegistry> _domainRegistry = new();
     private readonly Mock<ILogger<AskController>> _logger = new();
     private readonly AskController _sut;
 
     public AskControllerTests()
     {
-        _sut = new AskController(_mediator.Object, _logger.Object);
+        _domainRegistry.SetupGet(x => x.ActiveDomainId).Returns("legal");
+
+        _sut = new AskController(
+            _mediator.Object,
+            _domainGrants.Object,
+            _domainRegistry.Object,
+            _logger.Object);
+
+        _sut.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
+            {
+                User = new ClaimsPrincipal(
+                    new ClaimsIdentity(
+                    [
+                        new Claim(ClaimTypes.Role, "Admin")
+                    ],
+                    "TestAuth"))
+            }
+        };
     }
 
     private static LegalAnswer MakeAnswer(
@@ -291,5 +314,41 @@ public sealed class AskControllerTests
         var response = ok.Value.Should().BeOfType<AskResponse>().Subject;
 
         response.Citations.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Ask_NonAdminWithoutDomainGrant_ReturnsForbid()
+    {
+        var nonAdminController = new AskController(
+            _mediator.Object,
+            _domainGrants.Object,
+            _domainRegistry.Object,
+            _logger.Object)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(
+                        new ClaimsIdentity(
+                        [
+                            new Claim(ClaimTypes.NameIdentifier, "user-1"),
+                            new Claim(ClaimTypes.Role, "Analyst")
+                        ],
+                        "TestAuth"))
+                }
+            }
+        };
+
+        _domainGrants
+            .Setup(g => g.HasAccessAsync("user-1", "legal", null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var result = await nonAdminController.Ask(
+            new AskRequest { Question = "ما هو الحكم؟", DomainId = "legal" },
+            CancellationToken.None);
+
+        result.Should().BeOfType<ForbidResult>();
+        _mediator.Verify(m => m.Send(It.IsAny<AskLegalQuestionQuery>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

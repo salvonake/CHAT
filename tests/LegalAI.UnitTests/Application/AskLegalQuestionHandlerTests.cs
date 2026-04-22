@@ -1,4 +1,5 @@
 using FluentAssertions;
+using LegalAI.Application.Services;
 using LegalAI.Application.Queries;
 using LegalAI.Domain.Entities;
 using LegalAI.Domain.Interfaces;
@@ -21,11 +22,28 @@ public sealed class AskLegalQuestionHandlerTests
     private readonly Mock<IInjectionDetector> _injectionDetector = new();
     private readonly Mock<IAuditService> _audit = new();
     private readonly Mock<IMetricsCollector> _metrics = new();
+    private readonly Mock<IPromptTemplateEngine> _promptTemplateEngine = new();
     private readonly Mock<ILogger<AskLegalQuestionHandler>> _logger = new();
 
-    private AskLegalQuestionHandler CreateHandler() =>
-        new(_retrieval.Object, _llm.Object, _injectionDetector.Object,
-            _audit.Object, _metrics.Object, _logger.Object);
+    private AskLegalQuestionHandler CreateHandler()
+    {
+        _promptTemplateEngine
+            .Setup(p => p.BuildSystemPrompt(It.IsAny<string?>(), It.IsAny<bool>()))
+            .Returns("test-system-prompt");
+
+        _promptTemplateEngine
+            .Setup(p => p.BuildInsufficientEvidenceMessage(It.IsAny<string?>()))
+            .Returns("لا توجد أدلة كافية في الملفات المفهرسة للإجابة على هذا الاستفسار.\n\nInsufficient evidence found in the indexed corpus.");
+
+        return new AskLegalQuestionHandler(
+            _retrieval.Object,
+            _llm.Object,
+            _injectionDetector.Object,
+            _audit.Object,
+            _metrics.Object,
+            _promptTemplateEngine.Object,
+            _logger.Object);
+    }
 
     // ──────────────────────────── Helpers ────────────────────────────
 

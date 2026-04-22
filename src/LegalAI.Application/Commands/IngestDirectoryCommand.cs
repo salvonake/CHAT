@@ -13,6 +13,9 @@ namespace LegalAI.Application.Commands;
 public sealed class IngestDirectoryCommand : IRequest<IngestDirectoryResult>
 {
     public required string DirectoryPath { get; init; }
+    public string? DomainId { get; init; }
+    public string? DatasetId { get; init; }
+    public string? DatasetScope { get; init; }
     public string? CaseNamespace { get; init; }
     public string? UserId { get; init; }
     public bool Recursive { get; init; } = true;
@@ -102,6 +105,9 @@ public sealed class IngestDirectoryHandler : IRequestHandler<IngestDirectoryComm
                 var result = await _mediator.Send(new IngestDocumentCommand
                 {
                     FilePath = filePath,
+                    DomainId = request.DomainId,
+                    DatasetId = request.DatasetId,
+                    DatasetScope = request.DatasetScope,
                     CaseNamespace = request.CaseNamespace,
                     UserId = request.UserId
                 }, token);

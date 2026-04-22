@@ -1,6 +1,9 @@
 using System.Windows;
-using System.Windows.Controls;
 using LegalAI.Desktop.ViewModels;
+using DataFormats = System.Windows.DataFormats;
+using DragDropEffects = System.Windows.DragDropEffects;
+using DragEventArgs = System.Windows.DragEventArgs;
+using UserControl = System.Windows.Controls.UserControl;
 
 namespace LegalAI.Desktop.Views;
 

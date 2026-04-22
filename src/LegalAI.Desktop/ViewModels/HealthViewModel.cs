@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LegalAI.Desktop.Services;
@@ -28,7 +28,7 @@ public partial class HealthViewModel : ObservableObject
     private bool _llmAvailable;
 
     [ObservableProperty]
-    private string _llmStatusText = "غير محدد";
+    private string _llmStatusText = "Unknown";
 
     [ObservableProperty]
     private string _llmModelInfo = "";
@@ -65,7 +65,7 @@ public partial class HealthViewModel : ObservableObject
 
     // ── Audit ──
     [ObservableProperty]
-    private string _auditChainStatus = "غير محدد";
+    private string _auditChainStatus = "Unknown";
 
     [ObservableProperty]
     private bool _auditChainValid;
@@ -113,10 +113,10 @@ public partial class HealthViewModel : ObservableObject
         _logger = logger;
 
         EncryptionStatus = encryption.IsEnabled
-            ? "✓ التشفير مفعّل"
-            : "✗ التشفير غير مفعّل";
+            ? "✓ Encryption enabled"
+            : "✗ Encryption disabled";
 
-        GpuStatus = modelIntegrity.DetectedGpuInfo ?? "غير محدد";
+        GpuStatus = modelIntegrity.DetectedGpuInfo ?? "Unknown";
 
         _ = RefreshAllAsync();
     }
@@ -153,17 +153,17 @@ public partial class HealthViewModel : ObservableObject
         try
         {
             LlmAvailable = await _llm.IsAvailableAsync();
-            LlmStatusText = LlmAvailable ? "✓ النموذج يعمل" : "✗ النموذج غير متوفر";
+            LlmStatusText = LlmAvailable ? "✓ Model available" : "✗ Model unavailable";
 
             if (!_modelIntegrity.LlmModelValid && _modelIntegrity.LlmModelExists)
             {
-                LlmStatusText = "⚠ فشل التحقق من سلامة النموذج";
+                LlmStatusText = "⚠ Model integrity verification failed";
             }
         }
         catch (Exception ex)
         {
             LlmAvailable = false;
-            LlmStatusText = $"✗ خطأ: {ex.Message}";
+            LlmStatusText = $"✗ Error: {ex.Message}";
         }
     }
 
@@ -173,14 +173,14 @@ public partial class HealthViewModel : ObservableObject
         {
             var health = await _vectorStore.GetHealthAsync();
             VectorStoreHealthy = health.IsHealthy;
-            VectorStoreStatus = health.Status ?? "غير محدد";
+            VectorStoreStatus = health.Status ?? "Unknown";
             VectorCount = health.VectorCount;
             IndexedSegments = health.IndexedSegments;
         }
         catch (Exception ex)
         {
             VectorStoreHealthy = false;
-            VectorStoreStatus = $"خطأ: {ex.Message}";
+            VectorStoreStatus = $"Error: {ex.Message}";
         }
     }
 
@@ -207,18 +207,18 @@ public partial class HealthViewModel : ObservableObject
     {
         try
         {
-            AuditChainStatus = "جارٍ التحقق...";
+            AuditChainStatus = "Verifying...";
             var valid = await _audit.VerifyChainIntegrityAsync();
 
             AuditChainValid = valid;
             AuditChainStatus = valid
-                ? "✓ سلسلة التدقيق سليمة"
-                : "✗ خلل في سلسلة التدقيق";
+                ? "✓ Audit chain is valid"
+                : "✗ Audit chain mismatch";
         }
         catch (Exception ex)
         {
             AuditChainValid = false;
-            AuditChainStatus = $"✗ خطأ: {ex.Message}";
+            AuditChainStatus = $"✗ Error: {ex.Message}";
         }
     }
 
@@ -234,37 +234,37 @@ public partial class HealthViewModel : ObservableObject
 
                 MetricItems.Add(new MetricItem
                 {
-                    NameAr = "إجمالي الاستعلامات",
+                    NameAr = "Total queries",
                     NameEn = "Total Queries",
                     Value = snapshot.TotalQueries.ToString("N0")
                 });
                 MetricItems.Add(new MetricItem
                 {
-                    NameAr = "الامتناعات",
+                    NameAr = "Abstentions",
                     NameEn = "Abstentions",
                     Value = snapshot.AbstentionCount.ToString("N0")
                 });
                 MetricItems.Add(new MetricItem
                 {
-                    NameAr = "متوسط وقت الاسترجاع",
+                    NameAr = "Avg retrieval time",
                     NameEn = "Avg Retrieval Latency",
                     Value = $"{snapshot.RetrievalLatencyP50Ms:F0} ms"
                 });
                 MetricItems.Add(new MetricItem
                 {
-                    NameAr = "متوسط وقت التوليد",
+                    NameAr = "Avg generation time",
                     NameEn = "Avg LLM Latency",
                     Value = $"{snapshot.AverageGenerationLatencyMs:F0} ms"
                 });
                 MetricItems.Add(new MetricItem
                 {
-                    NameAr = "الوثائق المفهرسة",
+                    NameAr = "Indexed documents",
                     NameEn = "Documents Indexed",
                     Value = snapshot.TotalDocumentsIndexed.ToString("N0")
                 });
                 MetricItems.Add(new MetricItem
                 {
-                    NameAr = "محاولات الحقن المحظورة",
+                    NameAr = "Blocked injection attempts",
                     NameEn = "Injection Attempts Blocked",
                     Value = snapshot.InjectionDetections.ToString("N0")
                 });
@@ -284,7 +284,7 @@ public partial class HealthViewModel : ObservableObject
             var dialog = new Microsoft.Win32.SaveFileDialog
             {
                 Filter = "JSON Files (*.json)|*.json",
-                Title = "تصدير سجل التدقيق",
+                Title = "Export audit log",
                 FileName = $"audit-log-{DateTime.Now:yyyy-MM-dd}.json"
             };
 
@@ -311,3 +311,4 @@ public sealed class MetricItem
     public string NameEn { get; init; } = "";
     public string Value { get; init; } = "";
 }
+

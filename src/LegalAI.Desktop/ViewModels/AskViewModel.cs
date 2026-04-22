@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LegalAI.Application.Queries;
@@ -162,17 +162,16 @@ public partial class AskViewModel : ObservableObject
         // ── Fail-closed gate ──
         if (IsLibraryOnlyMode || !_guard.CanAskQuestions)
         {
-            AnswerText = "⛔ النظام في وضع المكتبة فقط. لا يمكن توليد إجابات حالياً.\n" +
-                         "System is in library-only mode. Cannot generate answers.";
+            AnswerText = "⛔ The system is in library-only mode. Answer generation is currently disabled.";
             HasAnswer = true;
             ShowSafetyWarning = true;
-            SafetyWarningText = "الاستعلام محظور — تحقق من حالة النظام في لوحة الصحة.";
+            SafetyWarningText = "Querying is blocked. Check the System Health panel.";
             return;
         }
 
         IsProcessing = true;
         HasAnswer = false;
-        ProcessingStatus = "جارٍ تحليل السؤال...";
+        ProcessingStatus = "Analyzing question...";
         AnswerText = "";
         Citations.Clear();
         Warnings.Clear();
@@ -182,7 +181,7 @@ public partial class AskViewModel : ObservableObject
 
         try
         {
-            ProcessingStatus = "جارٍ البحث في الوثائق...";
+            ProcessingStatus = "Searching indexed documents...";
 
             var query = new AskLegalQuestionQuery
             {
@@ -192,7 +191,7 @@ public partial class AskViewModel : ObservableObject
                 TopK = TopK
             };
 
-            ProcessingStatus = "جارٍ توليد الإجابة...";
+            ProcessingStatus = "Generating answer...";
             var answer = await _mediator.Send(query);
 
             await _dispatcher.InvokeAsync(() =>
@@ -204,10 +203,10 @@ public partial class AskViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to process question: {Q}", Question);
-            AnswerText = $"حدث خطأ أثناء معالجة السؤال:\n{ex.Message}";
+            AnswerText = $"An error occurred while processing the question:\n{ex.Message}";
             HasAnswer = true;
             ShowSafetyWarning = true;
-            SafetyWarningText = "فشل في معالجة السؤال — لم يتم توليد إجابة.";
+            SafetyWarningText = "Failed to process question. No answer was generated.";
         }
         finally
         {
@@ -226,24 +225,24 @@ public partial class AskViewModel : ObservableObject
         // Confidence label and color
         if (answer.ConfidenceScore >= 0.8)
         {
-            ConfidenceLabel = $"ثقة عالية ({answer.ConfidenceScore:P0})";
+            ConfidenceLabel = $"High confidence ({answer.ConfidenceScore:P0})";
             ConfidenceColor = "#2E7D32"; // Green
         }
         else if (answer.ConfidenceScore >= 0.5)
         {
-            ConfidenceLabel = $"ثقة متوسطة ({answer.ConfidenceScore:P0})";
+            ConfidenceLabel = $"Medium confidence ({answer.ConfidenceScore:P0})";
             ConfidenceColor = "#F57F17"; // Yellow/Orange
         }
         else
         {
-            ConfidenceLabel = $"ثقة منخفضة ({answer.ConfidenceScore:P0})";
+            ConfidenceLabel = $"Low confidence ({answer.ConfidenceScore:P0})";
             ConfidenceColor = "#C62828"; // Red
         }
 
         if (answer.IsAbstention)
         {
-            AbstentionReason = "لم يتم العثور على أدلة كافية في الوثائق المفهرسة للإجابة على هذا السؤال.";
-            ConfidenceLabel = "امتناع عن الإجابة";
+            AbstentionReason = "Not enough evidence was found in indexed documents to answer this question.";
+            ConfidenceLabel = "Abstained";
             ConfidenceColor = "#C62828";
         }
 
@@ -280,7 +279,7 @@ public partial class AskViewModel : ObservableObject
         {
             Question = Question,
             AnswerPreview = answer.IsAbstention
-                ? "[امتناع]"
+                ? "[Abstained]"
                 : (answer.Answer.Length > 100 ? answer.Answer[..100] + "..." : answer.Answer),
             Confidence = answer.ConfidenceScore,
             Timestamp = DateTime.Now,
@@ -313,12 +312,12 @@ public partial class AskViewModel : ObservableObject
 
             if (validation.Severity == AnswerSeverity.Critical)
             {
-                SafetyWarningText = "⛔ تحذير أمان حرج — لا تعتمد على هذه الإجابة دون تحقق مستقل.";
+                SafetyWarningText = "⛔ Critical safety warning. Do not rely on this answer without independent verification.";
                 SafetyWarningColor = "#C62828"; // Red
             }
             else
             {
-                SafetyWarningText = "⚠ تحذيرات أمان — تحقق من المصادر قبل الاعتماد على الإجابة.";
+                SafetyWarningText = "⚠ Safety warnings present. Verify sources before relying on this answer.";
                 SafetyWarningColor = "#F57F17"; // Orange
             }
 
@@ -370,3 +369,4 @@ public sealed class QueryHistoryItem
     public DateTime Timestamp { get; init; }
     public int CitationCount { get; init; }
 }
+

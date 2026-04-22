@@ -12,6 +12,8 @@ namespace LegalAI.Infrastructure.Storage;
 /// </summary>
 public sealed class SqliteDocumentStore : IDocumentStore, IAsyncDisposable
 {
+    private const string DocumentSelectColumns = "id, file_path, file_name, content_hash, file_size_bytes, page_count, indexed_at, last_modified, status, error_message, failure_count, case_namespace, domain_id, dataset_id, chunk_count, metadata_json";
+
     private readonly SqliteConnection _connection;
     private readonly ILogger<SqliteDocumentStore> _logger;
 
@@ -44,6 +46,8 @@ public sealed class SqliteDocumentStore : IDocumentStore, IAsyncDisposable
                 error_message TEXT,
                 failure_count INTEGER DEFAULT 0,
                 case_namespace TEXT,
+                domain_id TEXT,
+                dataset_id TEXT,
                 chunk_count INTEGER DEFAULT 0,
                 metadata_json TEXT
             );
@@ -51,6 +55,8 @@ public sealed class SqliteDocumentStore : IDocumentStore, IAsyncDisposable
             CREATE INDEX IF NOT EXISTS idx_documents_file_path ON documents(file_path);
             CREATE INDEX IF NOT EXISTS idx_documents_status ON documents(status);
             CREATE INDEX IF NOT EXISTS idx_documents_content_hash ON documents(content_hash);
+            CREATE INDEX IF NOT EXISTS idx_documents_domain_id ON documents(domain_id);
+            CREATE INDEX IF NOT EXISTS idx_documents_dataset_id ON documents(dataset_id);
 
             CREATE TABLE IF NOT EXISTS quarantine (
                 document_id TEXT NOT NULL,
@@ -65,13 +71,16 @@ public sealed class SqliteDocumentStore : IDocumentStore, IAsyncDisposable
             """;
         cmd.ExecuteNonQuery();
 
+        EnsureColumnExists("documents", "domain_id", "TEXT");
+        EnsureColumnExists("documents", "dataset_id", "TEXT");
+
         _logger.LogDebug("SQLite document store schema initialized");
     }
 
     public async Task<LegalDocument?> GetByFilePathAsync(string filePath, CancellationToken ct = default)
     {
         await using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "SELECT * FROM documents WHERE file_path = @path LIMIT 1";
+        cmd.CommandText = $"SELECT {DocumentSelectColumns} FROM documents WHERE file_path = @path LIMIT 1";
         cmd.Parameters.AddWithValue("@path", filePath);
         return await ReadSingleDocumentAsync(cmd, ct);
     }
@@ -79,7 +88,7 @@ public sealed class SqliteDocumentStore : IDocumentStore, IAsyncDisposable
     public async Task<LegalDocument?> GetByIdAsync(string id, CancellationToken ct = default)
     {
         await using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "SELECT * FROM documents WHERE id = @id LIMIT 1";
+        cmd.CommandText = $"SELECT {DocumentSelectColumns} FROM documents WHERE id = @id LIMIT 1";
         cmd.Parameters.AddWithValue("@id", id);
         return await ReadSingleDocumentAsync(cmd, ct);
     }
@@ -91,11 +100,11 @@ public sealed class SqliteDocumentStore : IDocumentStore, IAsyncDisposable
             INSERT OR REPLACE INTO documents 
             (id, file_path, file_name, content_hash, file_size_bytes, page_count, 
              indexed_at, last_modified, status, error_message, failure_count, 
-             case_namespace, chunk_count, metadata_json)
+             case_namespace, domain_id, dataset_id, chunk_count, metadata_json)
             VALUES 
             (@id, @file_path, @file_name, @content_hash, @file_size_bytes, @page_count,
              @indexed_at, @last_modified, @status, @error_message, @failure_count,
-             @case_namespace, @chunk_count, @metadata_json)
+             @case_namespace, @domain_id, @dataset_id, @chunk_count, @metadata_json)
             """;
 
         cmd.Parameters.AddWithValue("@id", document.Id);
@@ -113,6 +122,10 @@ public sealed class SqliteDocumentStore : IDocumentStore, IAsyncDisposable
         cmd.Parameters.AddWithValue("@failure_count", document.FailureCount);
         cmd.Parameters.AddWithValue("@case_namespace",
             document.CaseNamespace ?? (object)DBNull.Value);
+        cmd.Parameters.AddWithValue("@domain_id",
+            document.DomainId ?? (object)DBNull.Value);
+        cmd.Parameters.AddWithValue("@dataset_id",
+            document.DatasetId ?? (object)DBNull.Value);
         cmd.Parameters.AddWithValue("@chunk_count", document.ChunkCount);
         cmd.Parameters.AddWithValue("@metadata_json",
             JsonSerializer.Serialize(document.Metadata));
@@ -123,14 +136,14 @@ public sealed class SqliteDocumentStore : IDocumentStore, IAsyncDisposable
     public async Task<List<LegalDocument>> GetAllAsync(CancellationToken ct = default)
     {
         await using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "SELECT * FROM documents ORDER BY indexed_at DESC";
+        cmd.CommandText = $"SELECT {DocumentSelectColumns} FROM documents ORDER BY indexed_at DESC";
         return await ReadDocumentsAsync(cmd, ct);
     }
 
     public async Task<List<LegalDocument>> GetByStatusAsync(DocumentStatus status, CancellationToken ct = default)
     {
         await using var cmd = _connection.CreateCommand();
-        cmd.CommandText = "SELECT * FROM documents WHERE status = @status ORDER BY indexed_at DESC";
+        cmd.CommandText = $"SELECT {DocumentSelectColumns} FROM documents WHERE status = @status ORDER BY indexed_at DESC";
         cmd.Parameters.AddWithValue("@status", (int)status);
         return await ReadDocumentsAsync(cmd, ct);
     }
@@ -213,7 +226,7 @@ public sealed class SqliteDocumentStore : IDocumentStore, IAsyncDisposable
 
     private static LegalDocument MapDocument(SqliteDataReader reader)
     {
-        var metadataJson = reader.IsDBNull(13) ? null : reader.GetString(13);
+        var metadataJson = reader.IsDBNull(15) ? null : reader.GetString(15);
         var metadata = metadataJson is not null
             ? JsonSerializer.Deserialize<LegalDocumentMetadata>(metadataJson) ?? new()
             : new LegalDocumentMetadata();
@@ -232,9 +245,40 @@ public sealed class SqliteDocumentStore : IDocumentStore, IAsyncDisposable
             ErrorMessage = reader.IsDBNull(9) ? null : reader.GetString(9),
             FailureCount = reader.GetInt32(10),
             CaseNamespace = reader.IsDBNull(11) ? null : reader.GetString(11),
-            ChunkCount = reader.GetInt32(12),
+            DomainId = reader.IsDBNull(12) ? null : reader.GetString(12),
+            DatasetId = reader.IsDBNull(13) ? null : reader.GetString(13),
+            ChunkCount = reader.GetInt32(14),
             Metadata = metadata
         };
+    }
+
+    private void EnsureColumnExists(string tableName, string columnName, string columnDefinition)
+    {
+        using var check = _connection.CreateCommand();
+        check.CommandText = $"PRAGMA table_info({tableName});";
+
+        var exists = false;
+        using var reader = check.ExecuteReader();
+        while (reader.Read())
+        {
+            var existingName = reader.GetString(1);
+            if (string.Equals(existingName, columnName, StringComparison.OrdinalIgnoreCase))
+            {
+                exists = true;
+                break;
+            }
+        }
+
+        if (exists)
+        {
+            return;
+        }
+
+        using var alter = _connection.CreateCommand();
+        alter.CommandText = $"ALTER TABLE {tableName} ADD COLUMN {columnName} {columnDefinition};";
+        alter.ExecuteNonQuery();
+
+        _logger.LogInformation("Added missing column {Column} to {Table}", columnName, tableName);
     }
 
     public async ValueTask DisposeAsync()

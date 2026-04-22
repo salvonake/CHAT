@@ -9,6 +9,8 @@ namespace LegalAI.Application.Queries;
 public sealed class AskLegalQuestionQuery : IRequest<LegalAnswer>
 {
     public required string Question { get; init; }
+    public string? DomainId { get; init; }
+    public string? DatasetScope { get; init; }
     public string? CaseNamespace { get; init; }
     public bool StrictMode { get; init; } = true;
     public int TopK { get; init; } = 10;

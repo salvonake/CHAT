@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LegalAI.Desktop.Services;
 using LegalAI.Domain.Interfaces;
@@ -28,7 +28,7 @@ public partial class MainViewModel : ObservableObject
     private ObservableObject _currentView;
 
     [ObservableProperty]
-    private string _currentViewTitle = "استعلام قانوني";
+    private string _currentViewTitle = "Legal Query";
 
     // ── Encryption Warning ──
     [ObservableProperty]
@@ -42,7 +42,7 @@ public partial class MainViewModel : ObservableObject
     private bool _isModelLoaded;
 
     [ObservableProperty]
-    private string _modelStatusText = "جارٍ التحميل...";
+    private string _modelStatusText = "Loading...";
 
     [ObservableProperty]
     private bool _showModelWarning;
@@ -59,7 +59,7 @@ public partial class MainViewModel : ObservableObject
     private long _vectorCount;
 
     [ObservableProperty]
-    private string _statusText = "جاهز";
+    private string _statusText = "Ready";
 
     // ── Fail-Closed State ──
     [ObservableProperty]
@@ -133,8 +133,8 @@ public partial class MainViewModel : ObservableObject
             var reasons = _guard.BlockReasons;
             ShowSystemBlockBanner = true;
             SystemBlockReason = string.Join("\n", reasons);
-            SystemStatusText = "وضع المكتبة فقط — الاستعلام معطّل";
-            StatusText = "⚠ وضع المكتبة فقط";
+            SystemStatusText = "Library-only mode - querying disabled";
+            StatusText = "⚠ Library-only mode";
 
             // Propagate to AskViewModel and ChatViewModel
             AskVm.SetLibraryOnlyMode(true, reasons);
@@ -148,13 +148,13 @@ public partial class MainViewModel : ObservableObject
             var warnings = _guard.Warnings;
             if (warnings.Count > 0)
             {
-                SystemStatusText = "النظام يعمل مع تحذيرات";
-                StatusText = "⚠ تشغيل مع تحذيرات";
+                SystemStatusText = "System running with warnings";
+                StatusText = "⚠ Running with warnings";
             }
             else
             {
                 SystemStatusText = "";
-                StatusText = "جاهز";
+                StatusText = "Ready";
             }
 
             AskVm.SetLibraryOnlyMode(false, []);
@@ -169,7 +169,7 @@ public partial class MainViewModel : ObservableObject
         {
             ShowEncryptionWarning = true;
             EncryptionWarningText =
-                "⚠ التشفير غير مفعّل. بيانات الوثائق غير محمية. يُنصح بتفعيل التشفير من الإعدادات.";
+                "WARNING: Encryption is disabled. Document data is not protected. Enable encryption from Settings.";
         }
         else
         {
@@ -184,25 +184,25 @@ public partial class MainViewModel : ObservableObject
             ShowModelWarning = true;
             IsModelLoaded = false;
             ModelWarningText = _modelIntegrity.LlmError
-                ?? "ملف النموذج غير موجود. وضع المكتبة فقط — البحث متاح لكن الاستعلام معطل.";
-            ModelStatusText = "النموذج غير متوفر";
+                ?? "Model file is missing. Library-only mode: retrieval is available but querying is disabled.";
+            ModelStatusText = "Model unavailable";
         }
         else if (!_modelIntegrity.LlmModelValid)
         {
             ShowModelWarning = true;
             IsModelLoaded = false;
             ModelWarningText = _modelIntegrity.LlmError
-                ?? "فشل التحقق من سلامة النموذج.";
-            ModelStatusText = "خطأ في النموذج";
+                ?? "Model integrity verification failed.";
+            ModelStatusText = "Model error";
         }
         else
         {
             ShowModelWarning = false;
             IsModelLoaded = true;
-            ModelStatusText = "النموذج جاهز";
+            ModelStatusText = "Model ready";
         }
 
-        GpuStatusText = _modelIntegrity.DetectedGpuInfo ?? "غير محدد";
+        GpuStatusText = _modelIntegrity.DetectedGpuInfo ?? "Unknown";
     }
 
     private async Task UpdateVectorCountAsync(IVectorStore vectorStore)
@@ -223,42 +223,42 @@ public partial class MainViewModel : ObservableObject
     private void NavigateToAsk()
     {
         CurrentView = AskVm;
-        CurrentViewTitle = "استعلام قانوني";
+        CurrentViewTitle = "Legal Query";
     }
 
     [RelayCommand]
     private void NavigateToChat()
     {
         CurrentView = ChatVm;
-        CurrentViewTitle = "المحادثة القانونية";
+        CurrentViewTitle = "Legal Chat";
     }
 
     [RelayCommand]
     private void NavigateToDocuments()
     {
         CurrentView = DocumentsVm;
-        CurrentViewTitle = "إدارة الوثائق";
+        CurrentViewTitle = "Document Management";
     }
 
     [RelayCommand]
     private void NavigateToSettings()
     {
         CurrentView = SettingsVm;
-        CurrentViewTitle = "الإعدادات";
+        CurrentViewTitle = "Settings";
     }
 
     [RelayCommand]
     private void NavigateToHealth()
     {
         CurrentView = HealthVm;
-        CurrentViewTitle = "حالة النظام";
+        CurrentViewTitle = "System Health";
     }
 
     [RelayCommand]
     private void EnableEncryption()
     {
         CurrentView = SettingsVm;
-        CurrentViewTitle = "الإعدادات";
+        CurrentViewTitle = "Settings";
     }
 
     /// <summary>Refresh vector count from status bar.</summary>
@@ -267,3 +267,4 @@ public partial class MainViewModel : ObservableObject
         await UpdateVectorCountAsync(vectorStore);
     }
 }
+

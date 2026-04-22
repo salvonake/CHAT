@@ -9,7 +9,7 @@ namespace LegalAI.Infrastructure.VectorStore;
 /// <summary>
 /// Qdrant vector store implementation.
 /// Stores document chunk embeddings with rich legal metadata as payload.
-/// Supports namespace-based case isolation via payload filtering.
+/// Supports case/domain/dataset isolation via payload filtering.
 /// </summary>
 public sealed class QdrantVectorStore : IVectorStore
 {
@@ -64,6 +64,18 @@ public sealed class QdrantVectorStore : IVectorStore
                     PayloadSchemaType.Keyword, cancellationToken: ct);
 
                 await _client.CreatePayloadIndexAsync(
+                    _collectionName, "domain_id",
+                    PayloadSchemaType.Keyword, cancellationToken: ct);
+
+                await _client.CreatePayloadIndexAsync(
+                    _collectionName, "dataset_id",
+                    PayloadSchemaType.Keyword, cancellationToken: ct);
+
+                await _client.CreatePayloadIndexAsync(
+                    _collectionName, "dataset_scope",
+                    PayloadSchemaType.Keyword, cancellationToken: ct);
+
+                await _client.CreatePayloadIndexAsync(
                     _collectionName, "content_hash",
                     PayloadSchemaType.Keyword, cancellationToken: ct);
 
@@ -111,6 +123,9 @@ public sealed class QdrantVectorStore : IVectorStore
                 ["court_name"] = chunk.CourtName ?? "",
                 ["case_date"] = chunk.CaseDate ?? "",
                 ["case_namespace"] = chunk.CaseNamespace ?? "default",
+                ["domain_id"] = chunk.DomainId ?? "",
+                ["dataset_id"] = chunk.DatasetId ?? "",
+                ["dataset_scope"] = chunk.DatasetScope ?? "",
                 ["content_hash"] = chunk.ContentHash,
                 ["token_count"] = chunk.TokenCount,
                 ["source_file"] = chunk.SourceFileName
@@ -128,28 +143,73 @@ public sealed class QdrantVectorStore : IVectorStore
         _logger.LogDebug("Upserted {Count} vectors to Qdrant", chunks.Count);
     }
 
-    public async Task<List<RetrievedChunk>> SearchAsync(
-        float[] queryEmbedding, int topK, double scoreThreshold = 0.0,
-        string? caseNamespace = null, CancellationToken ct = default)
+    public Task<List<RetrievedChunk>> SearchAsync(
+        float[] queryEmbedding,
+        int topK,
+        double scoreThreshold = 0.0,
+        string? caseNamespace = null,
+        CancellationToken ct = default)
     {
-        // Build filter for case namespace isolation
-        Filter? filter = null;
+        return SearchAsync(queryEmbedding, topK, scoreThreshold, caseNamespace, ct, null, null);
+    }
+
+    public async Task<List<RetrievedChunk>> SearchAsync(
+        float[] queryEmbedding,
+        int topK,
+        double scoreThreshold,
+        string? caseNamespace,
+        CancellationToken ct,
+        string? domainId = null,
+        string? datasetScope = null)
+    {
+        var mustConditions = new List<Condition>();
+
         if (!string.IsNullOrEmpty(caseNamespace))
         {
-            filter = new Filter
+            mustConditions.Add(new Condition
             {
-                Must =
+                Field = new FieldCondition
                 {
-                    new Condition
-                    {
-                        Field = new FieldCondition
-                        {
-                            Key = "case_namespace",
-                            Match = new Match { Keyword = caseNamespace }
-                        }
-                    }
+                    Key = "case_namespace",
+                    Match = new Match { Keyword = caseNamespace }
                 }
-            };
+            });
+        }
+
+        var normalizedDomainId = NormalizeScopeValue(domainId);
+        if (!string.IsNullOrEmpty(normalizedDomainId))
+        {
+            mustConditions.Add(new Condition
+            {
+                Field = new FieldCondition
+                {
+                    Key = "domain_id",
+                    Match = new Match { Keyword = normalizedDomainId }
+                }
+            });
+        }
+
+        var normalizedDatasetScope = NormalizeScopeValue(datasetScope);
+        if (!string.IsNullOrEmpty(normalizedDatasetScope))
+        {
+            mustConditions.Add(new Condition
+            {
+                Field = new FieldCondition
+                {
+                    Key = "dataset_scope",
+                    Match = new Match { Keyword = normalizedDatasetScope }
+                }
+            });
+        }
+
+        Filter? filter = null;
+        if (mustConditions.Count > 0)
+        {
+            filter = new Filter();
+            foreach (var condition in mustConditions)
+            {
+                filter.Must.Add(condition);
+            }
         }
 
         var results = await _client.SearchAsync(
@@ -176,6 +236,9 @@ public sealed class QdrantVectorStore : IVectorStore
                 CaseNumber = GetPayloadStringOrNull(r, "case_number"),
                 CourtName = GetPayloadStringOrNull(r, "court_name"),
                 CaseDate = GetPayloadStringOrNull(r, "case_date"),
+                DomainId = GetPayloadStringOrNull(r, "domain_id"),
+                DatasetId = GetPayloadStringOrNull(r, "dataset_id"),
+                DatasetScope = GetPayloadStringOrNull(r, "dataset_scope"),
                 CaseNamespace = GetPayloadStringOrNull(r, "case_namespace"),
                 ContentHash = GetPayloadString(r, "content_hash"),
                 TokenCount = GetPayloadInt(r, "token_count"),
@@ -273,5 +336,12 @@ public sealed class QdrantVectorStore : IVectorStore
     private static int GetPayloadInt(ScoredPoint point, string key)
     {
         return point.Payload.TryGetValue(key, out var val) ? (int)val.IntegerValue : 0;
+    }
+
+    private static string? NormalizeScopeValue(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? null
+            : value.Trim().ToLowerInvariant();
     }
 }

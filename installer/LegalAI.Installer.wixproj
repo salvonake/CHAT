@@ -36,6 +36,7 @@
       <ComponentGroupName>AppFiles</ComponentGroupName>
       <DirectoryRefId>INSTALLDIR</DirectoryRefId>
       <SuppressRootDirectory>true</SuppressRootDirectory>
+      <SuppressSpecificWarnings>5151</SuppressSpecificWarnings>
       <PreprocessorVariable>var.SourceDir</PreprocessorVariable>
     </HarvestDirectory>
   </ItemGroup>

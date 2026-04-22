@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using LegalAI.Application.Services;
 using LegalAI.Domain.Interfaces;
 using LegalAI.Domain.ValueObjects;
 using MediatR;
@@ -22,6 +23,7 @@ public sealed class AskLegalQuestionHandler : IRequestHandler<AskLegalQuestionQu
     private readonly IInjectionDetector _injectionDetector;
     private readonly IAuditService _audit;
     private readonly IMetricsCollector _metrics;
+    private readonly IPromptTemplateEngine _promptTemplateEngine;
     private readonly ILogger<AskLegalQuestionHandler> _logger;
 
     // The strict system prompt enforcing evidence-only answers
@@ -60,6 +62,7 @@ public sealed class AskLegalQuestionHandler : IRequestHandler<AskLegalQuestionQu
         IInjectionDetector injectionDetector,
         IAuditService audit,
         IMetricsCollector metrics,
+        IPromptTemplateEngine promptTemplateEngine,
         ILogger<AskLegalQuestionHandler> logger)
     {
         _retrieval = retrieval;
@@ -67,6 +70,7 @@ public sealed class AskLegalQuestionHandler : IRequestHandler<AskLegalQuestionQu
         _injectionDetector = injectionDetector;
         _audit = audit;
         _metrics = metrics;
+        _promptTemplateEngine = promptTemplateEngine;
         _logger = logger;
     }
 
@@ -97,6 +101,9 @@ public sealed class AskLegalQuestionHandler : IRequestHandler<AskLegalQuestionQu
         }
 
         var sanitizedQuery = injectionResult.SanitizedQuery;
+        var systemPrompt = _promptTemplateEngine.BuildSystemPrompt(request.DomainId, request.StrictMode);
+        var resolvedCaseNamespace = request.CaseNamespace
+            ?? ScopeNamespaceBuilder.Build(request.DomainId, request.DatasetScope);
 
         // Step 2: Retrieval Pipeline
         var retrievalConfig = new RetrievalConfig
@@ -107,8 +114,26 @@ public sealed class AskLegalQuestionHandler : IRequestHandler<AskLegalQuestionQu
             EnableReranking = false // Enable when cross-encoder model is loaded
         };
 
-        var retrievalResult = await _retrieval.RetrieveAsync(
-            sanitizedQuery, retrievalConfig, request.CaseNamespace, ct);
+        RetrievalResult retrievalResult;
+        if (string.IsNullOrWhiteSpace(request.DomainId)
+            && string.IsNullOrWhiteSpace(request.DatasetScope))
+        {
+            retrievalResult = await _retrieval.RetrieveAsync(
+                sanitizedQuery,
+                retrievalConfig,
+                resolvedCaseNamespace,
+                ct);
+        }
+        else
+        {
+            retrievalResult = await _retrieval.RetrieveAsync(
+                sanitizedQuery,
+                retrievalConfig,
+                resolvedCaseNamespace,
+                ct,
+                request.DomainId,
+                request.DatasetScope);
+        }
 
         _metrics.RecordLatency("retrieval_latency", retrievalResult.RetrievalLatencyMs);
 
@@ -123,7 +148,7 @@ public sealed class AskLegalQuestionHandler : IRequestHandler<AskLegalQuestionQu
 
             return new LegalAnswer
             {
-                Answer = "لا توجد أدلة كافية في الملفات المفهرسة للإجابة على هذا الاستفسار.\n\nInsufficient evidence found in the indexed corpus.",
+                Answer = _promptTemplateEngine.BuildInsufficientEvidenceMessage(request.DomainId),
                 Citations = [],
                 ConfidenceScore = retrievalResult.AverageSimilarity,
                 RetrievedChunksUsed = retrievalResult.Chunks.Count,
@@ -138,7 +163,7 @@ public sealed class AskLegalQuestionHandler : IRequestHandler<AskLegalQuestionQu
         var userPrompt = BuildUserPrompt(sanitizedQuery, retrievalResult);
 
         // Step 5: Generate answer
-        var llmResponse = await _llm.GenerateAsync(SystemPrompt, userPrompt, ct);
+        var llmResponse = await _llm.GenerateAsync(systemPrompt, userPrompt, ct);
         _metrics.RecordLatency("generation_latency", llmResponse.LatencyMs);
         _metrics.IncrementCounter("total_tokens", llmResponse.TotalTokens);
 
@@ -168,7 +193,7 @@ public sealed class AskLegalQuestionHandler : IRequestHandler<AskLegalQuestionQu
 
                 // Regenerate with stricter constraints
                 var strictPrompt = userPrompt + "\n\nتحذير: يجب أن يكون كل ادعاء مدعوماً بنص مباشر من السياق المقدم. / WARNING: Every claim MUST be directly supported by text from the provided context.";
-                llmResponse = await _llm.GenerateAsync(SystemPrompt, strictPrompt, ct);
+                llmResponse = await _llm.GenerateAsync(systemPrompt, strictPrompt, ct);
                 citations = ExtractCitations(llmResponse.Content, retrievalResult);
                 confidenceScore *= 0.85; // Penalize for needing regeneration
             }

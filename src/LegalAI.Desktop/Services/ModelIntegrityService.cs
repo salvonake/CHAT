@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -69,7 +69,7 @@ public class ModelIntegrityService
 
         if (!LlmModelExists)
         {
-            LlmError = $"ملف النموذج غير موجود: {modelPath}\nModel file not found: {modelPath}";
+            LlmError = $"Model file not found: {modelPath}";
             LlmModelValid = false;
             _logger.LogWarning("LLM model file not found at {Path}", modelPath);
             return;
@@ -99,8 +99,7 @@ public class ModelIntegrityService
             else
             {
                 LlmModelValid = false;
-                LlmError = $"تحقق سلامة النموذج فشل — التجزئة لا تتطابق\n" +
-                           $"Model integrity check failed.\nExpected: {expectedHash}\nActual: {actualHash}";
+                LlmError = $"Model integrity check failed (hash mismatch).\nExpected: {expectedHash}\nActual: {actualHash}";
                 _logger.LogError(
                     "LLM MODEL INTEGRITY FAILURE. Expected: {Expected}, Got: {Actual}",
                     expectedHash, actualHash);
@@ -109,7 +108,7 @@ public class ModelIntegrityService
         catch (Exception ex)
         {
             LlmModelValid = false;
-            LlmError = $"خطأ في التحقق من سلامة النموذج: {ex.Message}";
+            LlmError = $"Model integrity verification error: {ex.Message}";
             _logger.LogError(ex, "Failed to compute LLM model hash");
         }
     }
@@ -133,8 +132,7 @@ public class ModelIntegrityService
 
         if (!EmbeddingModelExists)
         {
-            EmbeddingError = $"ملف نموذج التضمين غير موجود: {modelPath}\n" +
-                             $"Embedding model not found: {modelPath}";
+            EmbeddingError = $"Embedding model not found: {modelPath}";
             EmbeddingModelValid = false;
             _logger.LogWarning("Embedding ONNX model not found at {Path}", modelPath);
             return;
@@ -155,7 +153,7 @@ public class ModelIntegrityService
 
             if (!EmbeddingModelValid)
             {
-                EmbeddingError = $"تحقق سلامة نموذج التضمين فشل\nEmbedding model integrity check failed.";
+                EmbeddingError = "Embedding model integrity check failed.";
                 _logger.LogError("Embedding model integrity failure");
             }
         }
@@ -180,7 +178,7 @@ public class ModelIntegrityService
             }
             else
             {
-                DetectedGpuInfo = "لم يتم اكتشاف وحدة معالجة رسومات CUDA\nNo CUDA GPU detected — running on CPU";
+                DetectedGpuInfo = "No CUDA GPU detected - running on CPU";
                 _logger.LogInformation("No CUDA GPU detected. LLM will use CPU mode.");
             }
         }
@@ -207,3 +205,4 @@ public class ModelIntegrityService
         return Convert.ToHexString(sha256.Hash!).ToLowerInvariant();
     }
 }
+

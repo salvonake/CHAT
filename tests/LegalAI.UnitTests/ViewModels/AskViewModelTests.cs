@@ -594,7 +594,7 @@ public sealed class AskViewModelTests : IDisposable
         vm.Question = "سؤال";
         await vm.AskQuestionCommand.ExecuteAsync(null);
 
-        vm.ConfidenceLabel.Should().Contain("ثقة عالية");
+        vm.ConfidenceLabel.Should().Contain("High confidence");
         vm.ConfidenceColor.Should().Be("#2E7D32"); // Green
     }
 
@@ -607,7 +607,7 @@ public sealed class AskViewModelTests : IDisposable
         vm.Question = "سؤال";
         await vm.AskQuestionCommand.ExecuteAsync(null);
 
-        vm.ConfidenceLabel.Should().Contain("ثقة عالية");
+        vm.ConfidenceLabel.Should().Contain("High confidence");
         vm.ConfidenceColor.Should().Be("#2E7D32");
     }
 
@@ -620,7 +620,7 @@ public sealed class AskViewModelTests : IDisposable
         vm.Question = "سؤال";
         await vm.AskQuestionCommand.ExecuteAsync(null);
 
-        vm.ConfidenceLabel.Should().Contain("ثقة متوسطة");
+        vm.ConfidenceLabel.Should().Contain("Medium confidence");
         vm.ConfidenceColor.Should().Be("#F57F17"); // Orange
     }
 
@@ -634,7 +634,7 @@ public sealed class AskViewModelTests : IDisposable
         vm.Question = "سؤال";
         await vm.AskQuestionCommand.ExecuteAsync(null);
 
-        vm.ConfidenceLabel.Should().Contain("ثقة متوسطة");
+        vm.ConfidenceLabel.Should().Contain("Medium confidence");
         vm.ConfidenceColor.Should().Be("#F57F17");
     }
 
@@ -647,7 +647,7 @@ public sealed class AskViewModelTests : IDisposable
         vm.Question = "سؤال";
         await vm.AskQuestionCommand.ExecuteAsync(null);
 
-        vm.ConfidenceLabel.Should().Contain("ثقة منخفضة");
+        vm.ConfidenceLabel.Should().Contain("Low confidence");
         vm.ConfidenceColor.Should().Be("#C62828"); // Red
     }
 
@@ -661,7 +661,7 @@ public sealed class AskViewModelTests : IDisposable
         vm.Question = "سؤال";
         await vm.AskQuestionCommand.ExecuteAsync(null);
 
-        vm.ConfidenceLabel.Should().Contain("ثقة منخفضة");
+        vm.ConfidenceLabel.Should().Contain("Low confidence");
         vm.ConfidenceColor.Should().Be("#C62828");
     }
 
@@ -679,7 +679,7 @@ public sealed class AskViewModelTests : IDisposable
         await vm.AskQuestionCommand.ExecuteAsync(null);
 
         vm.IsAbstention.Should().BeTrue();
-        vm.ConfidenceLabel.Should().Be("امتناع عن الإجابة");
+        vm.ConfidenceLabel.Should().Be("Abstained");
         vm.ConfidenceColor.Should().Be("#C62828"); // Red for abstention
         vm.HasAnswer.Should().BeTrue();
     }
@@ -694,7 +694,7 @@ public sealed class AskViewModelTests : IDisposable
         await vm.AskQuestionCommand.ExecuteAsync(null);
 
         vm.QueryHistory.Should().HaveCount(1);
-        vm.QueryHistory[0].AnswerPreview.Should().Be("[امتناع]");
+        vm.QueryHistory[0].AnswerPreview.Should().Be("[Abstained]");
     }
 
     // ══════════════════════════════════════
@@ -712,7 +712,7 @@ public sealed class AskViewModelTests : IDisposable
         await vm.AskQuestionCommand.ExecuteAsync(null);
 
         vm.AnswerText.Should().Contain("Pipeline failed");
-        vm.AnswerText.Should().Contain("خطأ");
+        vm.AnswerText.Should().Contain("error");
         vm.HasAnswer.Should().BeTrue();
         vm.ShowSafetyWarning.Should().BeTrue();
         vm.SafetyWarningText.Should().NotBeEmpty();
@@ -793,7 +793,7 @@ public sealed class AskViewModelTests : IDisposable
 
         vm.ShowSafetyWarning.Should().BeTrue();
         vm.SafetyWarningColor.Should().Be("#C62828");
-        vm.ValidationIssues.Should().Contain(i => i.Contains("منخفضة"));
+        vm.ValidationIssues.Should().Contain(i => i.Contains("critically low"));
     }
 
     [Fact]
@@ -826,7 +826,7 @@ public sealed class AskViewModelTests : IDisposable
 
         vm.ShowSafetyWarning.Should().BeTrue();
         vm.SafetyWarningColor.Should().Be("#C62828");
-        vm.ValidationIssues.Should().Contain(i => i.Contains("معرفة خارجية"));
+        vm.ValidationIssues.Should().Contain(i => i.Contains("external knowledge"));
     }
 
     [Fact]

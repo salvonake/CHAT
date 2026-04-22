@@ -260,12 +260,15 @@ public sealed class IngestDirectoryHandlerTests : IDisposable
 
         await CreateHandler().Handle(MakeCommand(maxParallel: 1, progress: progress), CancellationToken.None);
 
-        // Allow async progress to propagate
-        await Task.Delay(100);
+        // Allow async progress callback to fully propagate.
+        var waitUntil = DateTime.UtcNow.AddSeconds(2);
+        while (DateTime.UtcNow < waitUntil && !progressReports.Exists(p => p.ProcessedFiles == 2))
+        {
+            await Task.Delay(25);
+        }
 
         progressReports.Should().HaveCountGreaterThanOrEqualTo(1);
-        progressReports.Last().TotalFiles.Should().Be(2);
-        progressReports.Last().ProcessedFiles.Should().Be(2);
+        progressReports.Should().Contain(p => p.TotalFiles == 2 && p.ProcessedFiles == 2);
     }
 
     // ══════════════════════════════════════

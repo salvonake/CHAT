@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -69,8 +69,7 @@ public partial class SettingsViewModel : ObservableObject
     public bool CanModifyStrictMode => false;
 
     /// <summary>Explanation shown to user about why strict mode is locked.</summary>
-    public string StrictModeLockReason => "الوضع الصارم مقفل دائماً — نظام حيوي مقيّد بالأدلة.\n" +
-        "Strict mode is permanently locked — life-critical evidence-constrained system.";
+    public string StrictModeLockReason => "Strict mode is permanently locked - evidence-constrained safety-critical system.";
 
     [ObservableProperty]
     private bool _enableDualPass = true;
@@ -88,7 +87,16 @@ public partial class SettingsViewModel : ObservableObject
 
     // ── UI ──
     [ObservableProperty]
-    private string _uiCulture = "fr-FR";
+    private string _uiCulture = "en-US";
+
+    [ObservableProperty]
+    private bool _minimizeToTrayOnClose = true;
+
+    [ObservableProperty]
+    private bool _minimizeToTrayOnMinimize = true;
+
+    [ObservableProperty]
+    private bool _showBackgroundNotifications = true;
 
     // ── State ──
     [ObservableProperty]
@@ -158,7 +166,10 @@ public partial class SettingsViewModel : ObservableObject
 
             if (root.TryGetProperty("Ui", out var ui))
             {
-                if (ui.TryGetProperty("Culture", out var culture)) UiCulture = culture.GetString() ?? "fr-FR";
+                if (ui.TryGetProperty("Culture", out var culture)) UiCulture = culture.GetString() ?? "en-US";
+                if (ui.TryGetProperty("MinimizeToTrayOnClose", out var closeToTray)) MinimizeToTrayOnClose = closeToTray.GetBoolean();
+                if (ui.TryGetProperty("MinimizeToTrayOnMinimize", out var minimizeToTray)) MinimizeToTrayOnMinimize = minimizeToTray.GetBoolean();
+                if (ui.TryGetProperty("ShowBackgroundNotifications", out var showBackgroundNotifications)) ShowBackgroundNotifications = showBackgroundNotifications.GetBoolean();
             }
         }
         catch (Exception ex)
@@ -201,7 +212,10 @@ public partial class SettingsViewModel : ObservableObject
                 },
                 ["Ui"] = new Dictionary<string, object>
                 {
-                    ["Culture"] = UiCulture
+                    ["Culture"] = UiCulture,
+                    ["MinimizeToTrayOnClose"] = MinimizeToTrayOnClose,
+                    ["MinimizeToTrayOnMinimize"] = MinimizeToTrayOnMinimize,
+                    ["ShowBackgroundNotifications"] = ShowBackgroundNotifications
                 },
                 ["Security"] = new Dictionary<string, object>
                 {
@@ -218,7 +232,7 @@ public partial class SettingsViewModel : ObservableObject
 
             await File.WriteAllTextAsync(configPath, json);
 
-            SaveStatus = "تم حفظ الإعدادات بنجاح. أعد تشغيل التطبيق لتطبيق التغييرات.";
+            SaveStatus = "Settings saved successfully. Restart the application to apply changes.";
             HasUnsavedChanges = false;
 
             _logger.LogInformation("Settings saved to {Path}", configPath);
@@ -228,7 +242,7 @@ public partial class SettingsViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            SaveStatus = $"فشل الحفظ: {ex.Message}";
+            SaveStatus = $"Save failed: {ex.Message}";
             _logger.LogError(ex, "Failed to save settings");
         }
     }
@@ -239,7 +253,7 @@ public partial class SettingsViewModel : ObservableObject
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
             Filter = "GGUF Models (*.gguf)|*.gguf|All Files (*.*)|*.*",
-            Title = "اختر ملف نموذج LLM"
+            Title = "Select LLM model file"
         };
 
         if (dialog.ShowDialog() == true)
@@ -255,7 +269,7 @@ public partial class SettingsViewModel : ObservableObject
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
             Filter = "ONNX Models (*.onnx)|*.onnx|All Files (*.*)|*.*",
-            Title = "اختر ملف نموذج التضمين"
+            Title = "Select embedding model file"
         };
 
         if (dialog.ShowDialog() == true)
@@ -270,7 +284,7 @@ public partial class SettingsViewModel : ObservableObject
     {
         var dialog = new Microsoft.Win32.OpenFolderDialog
         {
-            Title = "اختر مجلد مراقبة ملفات PDF"
+            Title = "Select PDF watch directory"
         };
 
         if (dialog.ShowDialog() == true)
@@ -290,3 +304,4 @@ public partial class SettingsViewModel : ObservableObject
         catch { }
     }
 }
+

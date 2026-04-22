@@ -1,7 +1,9 @@
 ﻿using System.IO;
+using System.IO.Pipes;
 using System.Net.Http;
 using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Windows;
 using System.Windows.Markup;
@@ -9,8 +11,10 @@ using System.Windows.Threading;
 using Serilog;
 using Serilog.Events;
 using LegalAI.Desktop.Services;
+using LegalAI.Application.Services;
 using LegalAI.Desktop.ViewModels;
 using LegalAI.Desktop.Views;
+using LegalAI.Domain.DomainModules;
 using LegalAI.Domain.Interfaces;
 using LegalAI.Infrastructure.Audit;
 using LegalAI.Infrastructure.Llm;
@@ -40,7 +44,11 @@ namespace LegalAI.Desktop;
 public partial class App : System.Windows.Application
 {
     private static Mutex? _singleInstanceMutex;
+    private const string SingleInstanceMutexName = "Local\\LegalAI_LCDSS_SingleInstance";
+    private const string ActivationPipeName = "LegalAI_LCDSS_Activation";
     private IHost? _host;
+    private CancellationTokenSource? _activationPipeCts;
+    private Task? _activationPipeServerTask;
     private const int SwRestore = 9;
     private bool _isArabicUi;
 
@@ -64,9 +72,15 @@ public partial class App : System.Windows.Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         // ── Single-Instance Guard ──
-        _singleInstanceMutex = new Mutex(true, "Global\\LegalAI_LCDSS_SingleInstance", out bool createdNew);
+        _singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out bool createdNew);
         if (!createdNew)
         {
+            if (await TrySignalRunningInstanceAsync())
+            {
+                Shutdown(0);
+                return;
+            }
+
             if (TryActivateExistingInstanceWindow())
             {
                 Shutdown(0);
@@ -74,10 +88,10 @@ public partial class App : System.Windows.Application
             }
 
             System.Windows.MessageBox.Show(
-                "نظام الدعم القانوني يعمل بالفعل.",
-                "تحذير",
+                "LegalAI is already running in the background. Open it from the system tray.",
+                "LegalAI",
                 MessageBoxButton.OK,
-                MessageBoxImage.Warning);
+                MessageBoxImage.Information);
             Shutdown(1);
             return;
         }
@@ -88,6 +102,9 @@ public partial class App : System.Windows.Application
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
 
         base.OnStartup(e);
+
+        _activationPipeCts = new CancellationTokenSource();
+        _activationPipeServerTask = RunActivationPipeServerAsync(_activationPipeCts.Token);
 
         // ── Build Configuration ──
         var basePath = AppDomain.CurrentDomain.BaseDirectory;
@@ -121,6 +138,7 @@ public partial class App : System.Windows.Application
 
         var uiCulture = configuration["Ui:Culture"];
         _isArabicUi = ApplyUiCulture(uiCulture);
+        ApplyLocalizedResourceDictionary(_isArabicUi);
 
         var paths = new DataPaths
         {
@@ -275,16 +293,31 @@ public partial class App : System.Windows.Application
                 // ── Metrics ──
                 services.AddSingleton<IMetricsCollector, InMemoryMetricsCollector>();
 
+                // ── Domain Modules ──
+                foreach (var module in BuiltInDomainModules.CreateDefaultSet())
+                {
+                    services.AddSingleton<IDomainModule>(module);
+                }
+
+                services.AddSingleton<IDomainModuleRegistry>(sp =>
+                {
+                    var activeDomain = cfg["Domain:ActiveModule"] ?? BuiltInDomainModules.Legal;
+                    return new InMemoryDomainModuleRegistry(sp.GetServices<IDomainModule>(), activeDomain);
+                });
+
+                services.AddSingleton<IPromptTemplateEngine, PromptTemplateEngine>();
+
                 // ── Ingestion ──
                 services.AddSingleton<IPdfExtractor, PdfPigExtractor>();
-                services.AddSingleton<IDocumentChunker, LegalDocumentChunker>();
+                services.AddSingleton<IDomainChunker, LegalDocumentChunker>();
+                services.AddSingleton<IDocumentChunker>(sp => sp.GetRequiredService<IDomainChunker>());
 
                 // ── Security ──
                 services.AddSingleton<IInjectionDetector, PromptInjectionDetector>();
 
                 // ── Retrieval ──
                 services.AddSingleton<BM25Index>();
-                services.AddSingleton<LegalQueryAnalyzer>();
+                services.AddSingleton<IDomainQueryAnalyzer, LegalQueryAnalyzer>();
                 services.AddSingleton<IRetrievalPipeline, LegalRetrievalPipeline>();
 
                 // ── MediatR ──
@@ -345,12 +378,7 @@ public partial class App : System.Windows.Application
         mainWindow.FlowDirection = _isArabicUi ? FlowDirection.RightToLeft : FlowDirection.LeftToRight;
         MainWindow = mainWindow;
         mainWindow.Show();
-        if (mainWindow.WindowState == WindowState.Minimized)
-            mainWindow.WindowState = WindowState.Normal;
-        mainWindow.Activate();
-        mainWindow.Topmost = true;
-        mainWindow.Topmost = false;
-        mainWindow.Focus();
+        mainWindow.RestoreAndActivateWindow();
 
         // ── Initialize Fail-Closed Guard ──
         var guard = _host.Services.GetRequiredService<FailClosedGuard>();
@@ -360,6 +388,27 @@ public partial class App : System.Windows.Application
     protected override async void OnExit(ExitEventArgs e)
     {
         Log.Information("═══ LegalAI LCDSS Shutting Down ═══");
+
+        if (_activationPipeCts is not null)
+        {
+            _activationPipeCts.Cancel();
+
+            if (_activationPipeServerTask is not null)
+            {
+                try
+                {
+                    await _activationPipeServerTask.WaitAsync(TimeSpan.FromSeconds(2));
+                }
+                catch
+                {
+                }
+            }
+
+            _activationPipeCts.Dispose();
+            _activationPipeCts = null;
+            _activationPipeServerTask = null;
+        }
+
         if (_host is not null)
         {
             await _host.StopAsync(TimeSpan.FromSeconds(5));
@@ -369,6 +418,100 @@ public partial class App : System.Windows.Application
         _singleInstanceMutex?.Dispose();
         await Log.CloseAndFlushAsync();
         base.OnExit(e);
+    }
+
+    private async Task<bool> TrySignalRunningInstanceAsync()
+    {
+        try
+        {
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+            using var client = new NamedPipeClientStream(
+                serverName: ".",
+                pipeName: ActivationPipeName,
+                direction: PipeDirection.Out,
+                options: PipeOptions.Asynchronous);
+
+            await client.ConnectAsync(timeoutCts.Token);
+
+            using var writer = new StreamWriter(client, Encoding.UTF8, 1024, leaveOpen: true)
+            {
+                AutoFlush = true
+            };
+            await writer.WriteLineAsync("ACTIVATE");
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private async Task RunActivationPipeServerAsync(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                using var server = new NamedPipeServerStream(
+                    ActivationPipeName,
+                    PipeDirection.In,
+                    1,
+                    PipeTransmissionMode.Byte,
+                    PipeOptions.Asynchronous);
+
+                await server.WaitForConnectionAsync(cancellationToken);
+
+                using var reader = new StreamReader(server, Encoding.UTF8, detectEncodingFromByteOrderMarks: false, bufferSize: 1024, leaveOpen: true);
+                var command = await reader.ReadLineAsync(cancellationToken);
+
+                if (string.Equals(command, "ACTIVATE", StringComparison.OrdinalIgnoreCase))
+                {
+                    await Dispatcher.InvokeAsync(HandleSecondaryActivationRequest);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                Log.Warning(ex, "Activation pipe listener failed unexpectedly");
+            }
+        }
+    }
+
+    private void HandleSecondaryActivationRequest()
+    {
+        if (MainWindow is MainWindow shellWindow)
+        {
+            shellWindow.HandleExternalActivationRequest();
+            return;
+        }
+
+        if (_host is null)
+            return;
+
+        try
+        {
+            var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+            if (mainWindow.DataContext is null)
+            {
+                mainWindow.DataContext = _host.Services.GetRequiredService<MainViewModel>();
+            }
+
+            MainWindow = mainWindow;
+            if (!mainWindow.IsVisible)
+            {
+                mainWindow.Show();
+            }
+
+            mainWindow.RestoreAndActivateWindow();
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Failed to restore main window after activation request");
+        }
     }
 
     // ═════════════════════════════════════════
@@ -417,7 +560,7 @@ public partial class App : System.Windows.Application
         try
         {
             var guard = _host?.Services.GetService<FailClosedGuard>();
-            guard?.ForceLibraryOnlyMode($"خطأ غير متوقع: {e.Exception.Message}");
+            guard?.ForceLibraryOnlyMode($"Unexpected error: {e.Exception.Message}");
         }
         catch { /* swallow — we're already in error state */ }
     }
@@ -498,7 +641,7 @@ public partial class App : System.Windows.Application
     private static bool ApplyUiCulture(string? configuredCulture)
     {
         var cultureName = string.IsNullOrWhiteSpace(configuredCulture)
-            ? "fr-FR"
+            ? "en-US"
             : configuredCulture.Trim();
 
         CultureInfo culture;
@@ -508,7 +651,7 @@ public partial class App : System.Windows.Application
         }
         catch
         {
-            culture = CultureInfo.GetCultureInfo("fr-FR");
+            culture = CultureInfo.GetCultureInfo("en-US");
         }
 
         CultureInfo.DefaultThreadCurrentCulture = culture;
@@ -528,4 +671,32 @@ public partial class App : System.Windows.Application
 
         return culture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
     }
+
+    private static void ApplyLocalizedResourceDictionary(bool isArabicUi)
+    {
+        if (Current?.Resources is null)
+            return;
+
+        var dictionaries = Current.Resources.MergedDictionaries;
+        for (int i = dictionaries.Count - 1; i >= 0; i--)
+        {
+            var source = dictionaries[i].Source?.OriginalString;
+            if (string.IsNullOrWhiteSpace(source))
+                continue;
+
+            if (source.Contains("Resources/Strings/Strings.ar.xaml", StringComparison.OrdinalIgnoreCase) ||
+                source.Contains("Resources/Strings/Strings.en.xaml", StringComparison.OrdinalIgnoreCase))
+            {
+                dictionaries.RemoveAt(i);
+            }
+        }
+
+        dictionaries.Add(new ResourceDictionary
+        {
+            Source = new Uri(
+                isArabicUi ? "Resources/Strings/Strings.ar.xaml" : "Resources/Strings/Strings.en.xaml",
+                UriKind.Relative)
+        });
+    }
 }
+

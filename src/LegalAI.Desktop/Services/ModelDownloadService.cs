@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Net.Http;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
@@ -61,7 +61,7 @@ public sealed class ModelDownloadService
             {
                 await destStream.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
                 totalRead += bytesRead;
-                progress?.Report(new DownloadProgress(totalRead, totalBytes, "جارٍ النسخ..."));
+                progress?.Report(new DownloadProgress(totalRead, totalBytes, "Copying..."));
             }
 
             await destStream.FlushAsync(ct);
@@ -121,8 +121,8 @@ public sealed class ModelDownloadService
                 totalRead += bytesRead;
 
                 var statusText = totalBytes > 0
-                    ? $"جارٍ التحميل... {totalRead / (1024.0 * 1024.0):N1} / {totalBytes / (1024.0 * 1024.0):N1} MB"
-                    : $"جارٍ التحميل... {totalRead / (1024.0 * 1024.0):N1} MB";
+                    ? $"Downloading... {totalRead / (1024.0 * 1024.0):N1} / {totalBytes / (1024.0 * 1024.0):N1} MB"
+                    : $"Downloading... {totalRead / (1024.0 * 1024.0):N1} MB";
 
                 progress?.Report(new DownloadProgress(totalRead, totalBytes, statusText));
             }
@@ -158,14 +158,14 @@ public sealed class ModelDownloadService
         if (string.IsNullOrWhiteSpace(expectedHash))
         {
             _logger.LogInformation("No expected hash configured — skipping verification for {File}", filePath);
-            return new HashVerificationResult(true, null, null, "لم يتم تكوين تجزئة — تم التخطي");
+            return new HashVerificationResult(true, null, null, "No expected hash configured - skipped");
         }
 
         if (!File.Exists(filePath))
-            return new HashVerificationResult(false, null, expectedHash, "الملف غير موجود");
+            return new HashVerificationResult(false, null, expectedHash, "File not found");
 
         _logger.LogInformation("Verifying SHA-256 hash for: {File}", filePath);
-        progress?.Report(new DownloadProgress(0, 1, "جارٍ التحقق من سلامة الملف..."));
+        progress?.Report(new DownloadProgress(0, 1, "Verifying file integrity..."));
 
         var fileInfo = new FileInfo(filePath);
         var totalBytes = fileInfo.Length;
@@ -181,7 +181,7 @@ public sealed class ModelDownloadService
         {
             sha256.TransformBlock(buffer, 0, bytesRead, null, 0);
             totalRead += bytesRead;
-            progress?.Report(new DownloadProgress(totalRead, totalBytes, "جارٍ التحقق من سلامة الملف..."));
+            progress?.Report(new DownloadProgress(totalRead, totalBytes, "Verifying file integrity..."));
         }
 
         sha256.TransformFinalBlock([], 0, 0);
@@ -191,14 +191,14 @@ public sealed class ModelDownloadService
         if (matches)
         {
             _logger.LogInformation("Hash verification passed ✓ for {File}", filePath);
-            return new HashVerificationResult(true, actualHash, expectedHash, "التحقق ناجح ✓");
+            return new HashVerificationResult(true, actualHash, expectedHash, "Verification passed ✓");
         }
         else
         {
             _logger.LogError("Hash verification FAILED for {File}. Expected: {Expected}, Got: {Actual}",
                 filePath, expectedHash, actualHash);
             return new HashVerificationResult(false, actualHash, expectedHash,
-                $"فشل التحقق من السلامة\nExpected: {expectedHash}\nActual: {actualHash}");
+                $"Integrity verification failed\nExpected: {expectedHash}\nActual: {actualHash}");
         }
     }
 
@@ -235,17 +235,17 @@ public sealed class ModelDownloadService
 
             return new OllamaCheckResult(true, modelAvailable,
                 modelAvailable
-                    ? $"✓ Ollama متصل — النموذج '{modelName}' متوفر"
-                    : $"⚠ Ollama متصل — النموذج '{modelName}' غير متوفر. قم بتنفيذ: ollama pull {modelName}");
+                    ? $"✓ Ollama connected - model '{modelName}' is available"
+                    : $"⚠ Ollama connected - model '{modelName}' is unavailable. Run: ollama pull {modelName}");
         }
         catch (HttpRequestException ex)
         {
             _logger.LogWarning(ex, "Cannot connect to Ollama at {Url}", baseUrl);
-            return new OllamaCheckResult(false, false, $"تعذر الاتصال بـ Ollama على {baseUrl}");
+            return new OllamaCheckResult(false, false, $"Cannot connect to Ollama at {baseUrl}");
         }
         catch (TaskCanceledException)
         {
-            return new OllamaCheckResult(false, false, "انتهت مهلة الاتصال بـ Ollama");
+            return new OllamaCheckResult(false, false, "Connection to Ollama timed out");
         }
     }
 
@@ -300,3 +300,4 @@ public readonly record struct OllamaCheckResult(
     bool Connected,
     bool ModelAvailable,
     string Message);
+

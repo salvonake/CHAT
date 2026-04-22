@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using LegalAI.Application.Queries;
@@ -70,9 +70,9 @@ public partial class ChatViewModel : ObservableObject
         Messages.Add(new ChatMessage
         {
             Role = ChatRole.System,
-            Text = "مرحباً بك في نظام الذكاء القانوني.\n" +
-                   "اطرح سؤالك القانوني وسأبحث في الوثائق المفهرسة لتقديم إجابة مقيّدة بالأدلة مع الاستشهادات.\n\n" +
-                   "⚖ جميع الإجابات مستندة فقط إلى الوثائق المفهرسة — لا يتم استخدام أي معرفة خارجية.",
+             Text = "Welcome to LegalAI.\n" +
+                 "Ask your legal question and I will search indexed documents to provide an evidence-constrained answer with citations.\n\n" +
+                 "⚖ All answers are based only on indexed documents - no external knowledge is used.",
             Timestamp = DateTime.Now
         });
 
@@ -130,8 +130,8 @@ public partial class ChatViewModel : ObservableObject
             Messages.Add(new ChatMessage
             {
                 Role = ChatRole.System,
-                Text = "⛔ النظام في وضع المكتبة فقط. لا يمكن توليد إجابات حالياً.\n" +
-                       "تحقق من حالة النظام في لوحة الصحة.",
+                Text = "⛔ The system is in library-only mode. Answer generation is currently disabled.\n" +
+                       "Check the System Health panel.",
                 Timestamp = DateTime.Now,
                 IsError = true
             });
@@ -152,7 +152,7 @@ public partial class ChatViewModel : ObservableObject
 
         try
         {
-            ProcessingStatus = "جارٍ البحث في الوثائق...";
+            ProcessingStatus = "Searching indexed documents...";
 
             var query = new AskLegalQuestionQuery
             {
@@ -162,7 +162,7 @@ public partial class ChatViewModel : ObservableObject
                 TopK = TopK
             };
 
-            ProcessingStatus = "جارٍ توليد الإجابة...";
+            ProcessingStatus = "Generating answer...";
             var answer = await _mediator.Send(query);
 
             await _dispatcher.InvokeAsync(() =>
@@ -176,7 +176,7 @@ public partial class ChatViewModel : ObservableObject
             _logger.LogError(ex, "Chat: Failed to process question");
             await _dispatcher.InvokeAsync(() =>
             {
-                assistantMsg.Text = $"حدث خطأ أثناء معالجة السؤال:\n{ex.Message}";
+                assistantMsg.Text = $"An error occurred while processing the question:\n{ex.Message}";
                 assistantMsg.IsError = true;
                 assistantMsg.IsStreaming = false;
             });
@@ -199,25 +199,25 @@ public partial class ChatViewModel : ObservableObject
         // Confidence
         if (answer.ConfidenceScore >= 0.8)
         {
-            msg.ConfidenceLabel = $"ثقة عالية ({answer.ConfidenceScore:P0})";
+            msg.ConfidenceLabel = $"High confidence ({answer.ConfidenceScore:P0})";
             msg.ConfidenceColor = "#2E7D32";
         }
         else if (answer.ConfidenceScore >= 0.5)
         {
-            msg.ConfidenceLabel = $"ثقة متوسطة ({answer.ConfidenceScore:P0})";
+            msg.ConfidenceLabel = $"Medium confidence ({answer.ConfidenceScore:P0})";
             msg.ConfidenceColor = "#F57F17";
         }
         else
         {
-            msg.ConfidenceLabel = $"ثقة منخفضة ({answer.ConfidenceScore:P0})";
+            msg.ConfidenceLabel = $"Low confidence ({answer.ConfidenceScore:P0})";
             msg.ConfidenceColor = "#C62828";
         }
 
         if (answer.IsAbstention)
         {
-            msg.ConfidenceLabel = "امتناع عن الإجابة";
+            msg.ConfidenceLabel = "Abstained";
             msg.ConfidenceColor = "#C62828";
-            msg.Text = "لم يتم العثور على أدلة كافية في الوثائق المفهرسة للإجابة على هذا السؤال.";
+            msg.Text = "Not enough evidence was found in indexed documents to answer this question.";
         }
 
         // Citations
@@ -252,8 +252,8 @@ public partial class ChatViewModel : ObservableObject
         {
             msg.HasSafetyWarning = true;
             msg.SafetyWarningText = validation.Severity == AnswerSeverity.Critical
-                ? "⛔ تحذير أمان حرج — لا تعتمد على هذه الإجابة دون تحقق مستقل."
-                : "⚠ تحذيرات أمان — تحقق من المصادر.";
+                ? "⛔ Critical safety warning. Do not rely on this answer without independent verification."
+                : "⚠ Safety warnings present. Verify sources.";
 
             foreach (var issue in validation.Issues)
                 msg.ValidationIssues.Add(issue);
@@ -267,7 +267,7 @@ public partial class ChatViewModel : ObservableObject
         Messages.Add(new ChatMessage
         {
             Role = ChatRole.System,
-            Text = "تم مسح المحادثة. اطرح سؤالاً جديداً.",
+            Text = "Chat was cleared. Ask a new question.",
             Timestamp = DateTime.Now
         });
     }
@@ -343,3 +343,4 @@ public partial class ChatMessage : ObservableObject
     /// <summary>Whether this is an assistant message with content (not streaming).</summary>
     public bool IsCompleteAssistant => Role == ChatRole.Assistant && !IsStreaming && !string.IsNullOrEmpty(Text);
 }
+

@@ -127,7 +127,7 @@ public sealed class MainViewModelTests
         await Task.Delay(200);
 
         vm.CurrentView.Should().BeOfType<AskViewModel>();
-        vm.CurrentViewTitle.Should().Contain("استعلام");
+        vm.CurrentViewTitle.Should().Contain("Legal Query");
     }
 
     [Fact]
@@ -139,7 +139,7 @@ public sealed class MainViewModelTests
         vm.NavigateToChatCommand.Execute(null);
 
         vm.CurrentView.Should().BeOfType<ChatViewModel>();
-        vm.CurrentViewTitle.Should().Contain("المحادثة");
+        vm.CurrentViewTitle.Should().Contain("Legal Chat");
     }
 
     [Fact]
@@ -151,7 +151,7 @@ public sealed class MainViewModelTests
         vm.NavigateToDocumentsCommand.Execute(null);
 
         vm.CurrentView.Should().BeOfType<DocumentsViewModel>();
-        vm.CurrentViewTitle.Should().Contain("الوثائق");
+        vm.CurrentViewTitle.Should().Contain("Document Management");
     }
 
     [Fact]
@@ -163,7 +163,7 @@ public sealed class MainViewModelTests
         vm.NavigateToSettingsCommand.Execute(null);
 
         vm.CurrentView.Should().BeOfType<SettingsViewModel>();
-        vm.CurrentViewTitle.Should().Contain("الإعدادات");
+        vm.CurrentViewTitle.Should().Contain("Settings");
     }
 
     [Fact]
@@ -175,7 +175,7 @@ public sealed class MainViewModelTests
         vm.NavigateToHealthCommand.Execute(null);
 
         vm.CurrentView.Should().BeOfType<HealthViewModel>();
-        vm.CurrentViewTitle.Should().Contain("حالة النظام");
+        vm.CurrentViewTitle.Should().Contain("System Health");
     }
 
     [Fact]
@@ -199,7 +199,7 @@ public sealed class MainViewModelTests
         await Task.Delay(200);
 
         vm.ShowEncryptionWarning.Should().BeTrue();
-        vm.EncryptionWarningText.Should().Contain("التشفير");
+        vm.EncryptionWarningText.Should().Contain("Encryption");
     }
 
     [Fact]

@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -15,10 +15,11 @@ namespace LegalAI.Desktop.ViewModels;
 ///
 /// Wizard Steps:
 ///   0 — Welcome & provider selection
-///   1 — LLM model configuration
-///   2 — Embedding model configuration
-///   3 — Download/copy/verify progress
-///   4 — Complete
+///   1 — Domain selection
+///   2 — LLM model configuration
+///   3 — Embedding model configuration
+///   4 — Download/copy/verify progress
+///   5 — Complete
 /// </summary>
 public partial class SetupWizardViewModel : ObservableObject
 {
@@ -45,13 +46,14 @@ public partial class SetupWizardViewModel : ObservableObject
     private int _currentStep;
 
     public const int StepWelcome = 0;
-    public const int StepLlm = 1;
-    public const int StepEmbedding = 2;
-    public const int StepProgress = 3;
-    public const int StepComplete = 4;
+    public const int StepDomain = 1;
+    public const int StepLlm = 2;
+    public const int StepEmbedding = 3;
+    public const int StepProgress = 4;
+    public const int StepComplete = 5;
 
     [ObservableProperty]
-    private string _stepTitle = "مرحباً بكم في نظام الدعم القانوني";
+    private string _stepTitle = "Welcome to LegalAI";
 
     // ═══════════════════════════════════════════
     //  Step 0: Provider Selection
@@ -65,6 +67,24 @@ public partial class SetupWizardViewModel : ObservableObject
 
     [ObservableProperty]
     private string _modelFolderStatusMessage = "";
+
+    // ═══════════════════════════════════════════
+    //  Step 1: Domain Selection
+    // ═══════════════════════════════════════════
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(NextStepCommand))]
+    private string _selectedDomainId = "legal";
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(NextStepCommand))]
+    private string _customDomainId = "";
+
+    [ObservableProperty]
+    private string _domainStatusMessage = "";
+
+    public bool IsCustomDomain =>
+        string.Equals(SelectedDomainId, "custom", StringComparison.OrdinalIgnoreCase);
 
     // ═══════════════════════════════════════════
     //  Step 1: LLM Model Configuration
@@ -226,14 +246,23 @@ public partial class SetupWizardViewModel : ObservableObject
         {
             LlmModelFileName = Path.GetFileName(llmPath);
             LlmLocalPath = llmPath;
-            LlmStatusMessage = $"✓ تم العثور على نموذج LLM: {ModelDownloadService.FormatFileSize(new FileInfo(llmPath).Length)}";
+            LlmStatusMessage = $"✓ Found LLM model: {ModelDownloadService.FormatFileSize(new FileInfo(llmPath).Length)}";
         }
 
         var embPath = Path.Combine(_paths.ModelsDirectory, EmbModelFileName);
         if (File.Exists(embPath))
         {
             EmbLocalPath = embPath;
-            EmbStatusMessage = $"✓ تم العثور على نموذج التضمين: {ModelDownloadService.FormatFileSize(new FileInfo(embPath).Length)}";
+            EmbStatusMessage = $"✓ Found embedding model: {ModelDownloadService.FormatFileSize(new FileInfo(embPath).Length)}";
+        }
+    }
+
+    partial void OnSelectedDomainIdChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsCustomDomain));
+        if (!string.Equals(value, "custom", StringComparison.OrdinalIgnoreCase))
+        {
+            DomainStatusMessage = string.Empty;
         }
     }
 
@@ -250,17 +279,25 @@ public partial class SetupWizardViewModel : ObservableObject
         switch (CurrentStep)
         {
             case StepWelcome:
+                CurrentStep = StepDomain;
+                StepTitle = "Choose domain";
+                break;
+
+            case StepDomain:
+                if (!ValidateDomainStep())
+                    return;
+
                 if (UseOllama)
                 {
                     // Skip LLM/Embedding file steps, go directly to Ollama validation
                     CurrentStep = StepProgress;
-                    StepTitle = "جارٍ التحقق من الاتصال...";
+                    StepTitle = "Checking connectivity...";
                     await ExecuteOllamaSetupAsync();
                 }
                 else
                 {
                     CurrentStep = StepLlm;
-                    StepTitle = "إعداد النموذج اللغوي (LLM)";
+                    StepTitle = "Configure language model (LLM)";
                 }
                 break;
 
@@ -268,14 +305,14 @@ public partial class SetupWizardViewModel : ObservableObject
                 if (!ValidateLlmStep())
                     return;
                 CurrentStep = StepEmbedding;
-                StepTitle = "إعداد نموذج التضمين (Embedding)";
+                StepTitle = "Configure embedding model";
                 break;
 
             case StepEmbedding:
                 if (!ValidateEmbeddingStep())
                     return;
                 CurrentStep = StepProgress;
-                StepTitle = "جارٍ إعداد النماذج...";
+                StepTitle = "Setting up models...";
                 await ExecuteLocalSetupAsync();
                 break;
         }
@@ -286,14 +323,19 @@ public partial class SetupWizardViewModel : ObservableObject
     {
         switch (CurrentStep)
         {
-            case StepLlm:
+            case StepDomain:
                 CurrentStep = StepWelcome;
-                StepTitle = "مرحباً بكم في نظام الدعم القانوني";
+                StepTitle = "Welcome to LegalAI";
+                break;
+
+            case StepLlm:
+                CurrentStep = StepDomain;
+                StepTitle = "Choose domain";
                 break;
 
             case StepEmbedding:
                 CurrentStep = StepLlm;
-                StepTitle = "إعداد النموذج اللغوي (LLM)";
+                StepTitle = "Configure language model (LLM)";
                 break;
         }
     }
@@ -327,11 +369,11 @@ public partial class SetupWizardViewModel : ObservableObject
                 UseShellExecute = true
             };
             System.Diagnostics.Process.Start(psi);
-            OllamaStatusMessage = "تم فتح صفحة تنزيل Ollama في المتصفح.";
+            OllamaStatusMessage = "Opened Ollama download page in browser.";
         }
         catch (Exception ex)
         {
-            OllamaStatusMessage = $"تعذر فتح صفحة التنزيل: {ex.Message}";
+            OllamaStatusMessage = $"Could not open download page: {ex.Message}";
         }
     }
 
@@ -344,7 +386,7 @@ public partial class SetupWizardViewModel : ObservableObject
     {
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "اختر ملف النموذج اللغوي (GGUF)",
+            Title = "Select language model file (GGUF)",
             Filter = "GGUF Model Files (*.gguf)|*.gguf|All Files (*.*)|*.*",
             CheckFileExists = true
         };
@@ -353,7 +395,7 @@ public partial class SetupWizardViewModel : ObservableObject
         {
             LlmLocalPath = dialog.FileName;
             var size = new FileInfo(dialog.FileName).Length;
-            LlmStatusMessage = $"تم الاختيار: {ModelDownloadService.FormatFileSize(size)}";
+            LlmStatusMessage = $"Selected: {ModelDownloadService.FormatFileSize(size)}";
         }
     }
 
@@ -362,7 +404,7 @@ public partial class SetupWizardViewModel : ObservableObject
     {
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "اختر ملف نموذج التضمين (ONNX)",
+            Title = "Select embedding model file (ONNX)",
             Filter = "ONNX Model Files (*.onnx)|*.onnx|All Files (*.*)|*.*",
             CheckFileExists = true
         };
@@ -371,7 +413,7 @@ public partial class SetupWizardViewModel : ObservableObject
         {
             EmbLocalPath = dialog.FileName;
             var size = new FileInfo(dialog.FileName).Length;
-            EmbStatusMessage = $"تم الاختيار: {ModelDownloadService.FormatFileSize(size)}";
+            EmbStatusMessage = $"Selected: {ModelDownloadService.FormatFileSize(size)}";
         }
     }
 
@@ -380,7 +422,7 @@ public partial class SetupWizardViewModel : ObservableObject
     {
         var dialog = new Microsoft.Win32.OpenFolderDialog
         {
-            Title = "اختر مجلد النماذج (GGUF + ONNX)"
+            Title = "Select models folder (GGUF + ONNX)"
         };
 
         if (dialog.ShowDialog() != true)
@@ -407,11 +449,11 @@ public partial class SetupWizardViewModel : ObservableObject
             LlmDownloadUrl = false;
             LlmLocalPath = llmPath;
             LlmModelFileName = Path.GetFileName(llmPath);
-            messages.Add("✓ تم اكتشاف نموذج LLM");
+            messages.Add("✓ Detected LLM model");
         }
         else
         {
-            messages.Add("⚠ لم يتم العثور على ملف GGUF معروف");
+            messages.Add("⚠ No known GGUF file found");
         }
 
         if (!string.IsNullOrWhiteSpace(embPath))
@@ -420,11 +462,11 @@ public partial class SetupWizardViewModel : ObservableObject
             EmbDownloadUrl = false;
             EmbLocalPath = embPath;
             EmbModelFileName = Path.GetFileName(embPath);
-            messages.Add("✓ تم اكتشاف نموذج التضمين ONNX");
+            messages.Add("✓ Detected ONNX embedding model");
         }
         else
         {
-            messages.Add("⚠ لم يتم العثور على ملف ONNX");
+            messages.Add("⚠ No ONNX file found");
         }
 
         ModelFolderStatusMessage = string.Join("\n", messages);
@@ -433,7 +475,7 @@ public partial class SetupWizardViewModel : ObservableObject
     [RelayCommand]
     private async Task TestOllamaAsync()
     {
-        OllamaStatusMessage = "جارٍ الاختبار...";
+        OllamaStatusMessage = "Testing connection...";
         try
         {
             var llmResult = await _downloadService.TestOllamaConnectionAsync(OllamaUrl, OllamaLlmModel, CancellationToken.None);
@@ -454,7 +496,7 @@ public partial class SetupWizardViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            OllamaStatusMessage = $"خطأ: {ex.Message}";
+            OllamaStatusMessage = $"Error: {ex.Message}";
         }
     }
 
@@ -462,18 +504,52 @@ public partial class SetupWizardViewModel : ObservableObject
     //  Validation
     // ═══════════════════════════════════════════
 
+    private bool ValidateDomainStep()
+    {
+        if (!IsCustomDomain)
+        {
+            DomainStatusMessage = string.Empty;
+            return true;
+        }
+
+        var normalized = CustomDomainId.Trim();
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            DomainStatusMessage = "⚠ Enter a custom domain ID";
+            return false;
+        }
+
+        if (normalized.Length < 3 || normalized.Length > 40)
+        {
+            DomainStatusMessage = "⚠ Domain ID must be 3-40 characters";
+            return false;
+        }
+
+        foreach (var ch in normalized)
+        {
+            if (!char.IsLetterOrDigit(ch) && ch is not '-' and not '_')
+            {
+                DomainStatusMessage = "⚠ Allowed: letters, numbers, '-' and '_' only";
+                return false;
+            }
+        }
+
+        DomainStatusMessage = string.Empty;
+        return true;
+    }
+
     private bool ValidateLlmStep()
     {
         if (LlmBrowseLocal)
         {
             if (string.IsNullOrWhiteSpace(LlmLocalPath))
             {
-                LlmStatusMessage = "⚠ يرجى تحديد مسار ملف النموذج";
+                LlmStatusMessage = "⚠ Select a model file path";
                 return false;
             }
             if (!File.Exists(LlmLocalPath))
             {
-                LlmStatusMessage = "⚠ الملف المحدد غير موجود";
+                LlmStatusMessage = "⚠ Selected file does not exist";
                 return false;
             }
         }
@@ -481,7 +557,7 @@ public partial class SetupWizardViewModel : ObservableObject
         {
             if (string.IsNullOrWhiteSpace(LlmDownloadUrlText) || !Uri.TryCreate(LlmDownloadUrlText, UriKind.Absolute, out _))
             {
-                LlmStatusMessage = "⚠ يرجى إدخال رابط تحميل صالح";
+                LlmStatusMessage = "⚠ Enter a valid download URL";
                 return false;
             }
         }
@@ -495,12 +571,12 @@ public partial class SetupWizardViewModel : ObservableObject
         {
             if (string.IsNullOrWhiteSpace(EmbLocalPath))
             {
-                EmbStatusMessage = "⚠ يرجى تحديد مسار ملف نموذج التضمين";
+                EmbStatusMessage = "⚠ Select embedding model file path";
                 return false;
             }
             if (!File.Exists(EmbLocalPath))
             {
-                EmbStatusMessage = "⚠ الملف المحدد غير موجود";
+                EmbStatusMessage = "⚠ Selected file does not exist";
                 return false;
             }
         }
@@ -508,7 +584,7 @@ public partial class SetupWizardViewModel : ObservableObject
         {
             if (string.IsNullOrWhiteSpace(EmbDownloadUrlText) || !Uri.TryCreate(EmbDownloadUrlText, UriKind.Absolute, out _))
             {
-                EmbStatusMessage = "⚠ يرجى إدخال رابط تحميل صالح";
+                EmbStatusMessage = "⚠ Enter a valid download URL";
                 return false;
             }
         }
@@ -542,9 +618,9 @@ public partial class SetupWizardViewModel : ObservableObject
             else if (LlmDownloadUrl)
             {
                 llmRuntimePath = llmDestPath;
-                tasks.Add(("تحميل النموذج اللغوي", async () =>
+                tasks.Add(("Download language model", async () =>
                 {
-                    ProgressStatusText = "جارٍ تحميل النموذج اللغوي...";
+                    ProgressStatusText = "Downloading language model...";
                     var progress = new Progress<DownloadProgress>(p =>
                     {
                         CurrentFileProgress = p.Fraction >= 0 ? p.Fraction : 0;
@@ -563,9 +639,9 @@ public partial class SetupWizardViewModel : ObservableObject
             else if (EmbDownloadUrl)
             {
                 embRuntimePath = embDestPath;
-                tasks.Add(("تحميل نموذج التضمين", async () =>
+                tasks.Add(("Download embedding model", async () =>
                 {
-                    ProgressStatusText = "جارٍ تحميل نموذج التضمين...";
+                    ProgressStatusText = "Downloading embedding model...";
                     var progress = new Progress<DownloadProgress>(p =>
                     {
                         CurrentFileProgress = p.Fraction >= 0 ? p.Fraction : 0;
@@ -579,9 +655,9 @@ public partial class SetupWizardViewModel : ObservableObject
             var expectedLlmHash = _config["ModelIntegrity:ExpectedLlmHash"];
             if (!string.IsNullOrWhiteSpace(expectedLlmHash))
             {
-                tasks.Add(("التحقق من سلامة النموذج اللغوي", async () =>
+                tasks.Add(("Verify language model integrity", async () =>
                 {
-                    ProgressStatusText = "جارٍ التحقق من سلامة النموذج اللغوي...";
+                    ProgressStatusText = "Verifying language model integrity...";
                     var progress = new Progress<DownloadProgress>(p =>
                     {
                         CurrentFileProgress = p.Fraction >= 0 ? p.Fraction : 0;
@@ -596,9 +672,9 @@ public partial class SetupWizardViewModel : ObservableObject
             var expectedEmbHash = _config["ModelIntegrity:ExpectedEmbeddingHash"];
             if (!string.IsNullOrWhiteSpace(expectedEmbHash))
             {
-                tasks.Add(("التحقق من سلامة نموذج التضمين", async () =>
+                tasks.Add(("Verify embedding model integrity", async () =>
                 {
-                    ProgressStatusText = "جارٍ التحقق من سلامة نموذج التضمين...";
+                    ProgressStatusText = "Verifying embedding model integrity...";
                     var progress = new Progress<DownloadProgress>(p =>
                     {
                         CurrentFileProgress = p.Fraction >= 0 ? p.Fraction : 0;
@@ -614,7 +690,7 @@ public partial class SetupWizardViewModel : ObservableObject
             if (tasks.Count == 0)
             {
                 // Models already in place
-                ProgressStatusText = "النماذج جاهزة بالفعل";
+                ProgressStatusText = "Models are already available";
                 OverallProgress = 1.0;
             }
             else
@@ -632,6 +708,8 @@ public partial class SetupWizardViewModel : ObservableObject
             }
 
             SaveWizardSettings(
+                domainId: ResolveSelectedDomainId(),
+                customDomainId: IsCustomDomain ? CustomDomainId.Trim() : null,
                 llmProvider: "llamasharp",
                 llmModelPath: llmRuntimePath,
                 embeddingProvider: "onnx",
@@ -642,25 +720,25 @@ public partial class SetupWizardViewModel : ObservableObject
 
             // ── Success ──
             CurrentStep = StepComplete;
-            StepTitle = "اكتمل الإعداد";
+            StepTitle = "Setup complete";
             SetupSucceeded = true;
-            CompletionMessage = "✓ تم إعداد النماذج بنجاح. النظام جاهز للاستخدام.";
+            CompletionMessage = "✓ Models were configured successfully. The system is ready.";
             _logger.LogInformation("Setup wizard completed successfully (local models)");
         }
         catch (OperationCanceledException)
         {
             CurrentStep = StepComplete;
-            StepTitle = "تم الإلغاء";
+            StepTitle = "Cancelled";
             SetupSucceeded = false;
-            CompletionMessage = "تم إلغاء الإعداد. يمكنك إعادة المحاولة لاحقاً.";
+            CompletionMessage = "Setup was cancelled. You can retry later.";
             _logger.LogWarning("Setup wizard cancelled by user");
         }
         catch (Exception ex)
         {
             CurrentStep = StepComplete;
-            StepTitle = "خطأ في الإعداد";
+            StepTitle = "Setup error";
             SetupSucceeded = false;
-            CompletionMessage = "فشل الإعداد. تحقق من التفاصيل أدناه.";
+            CompletionMessage = "Setup failed. Review details below.";
             ErrorDetails = $"{ex.GetType().Name}: {ex.Message}";
             _logger.LogError(ex, "Setup wizard failed");
         }
@@ -684,7 +762,7 @@ public partial class SetupWizardViewModel : ObservableObject
 
         try
         {
-            ProgressStatusText = "جارٍ التحقق من اتصال Ollama...";
+            ProgressStatusText = "Checking Ollama connectivity...";
             CurrentFileProgress = 0;
 
             var llmCheck = await _downloadService.TestOllamaConnectionAsync(OllamaUrl, OllamaLlmModel, ct);
@@ -693,25 +771,27 @@ public partial class SetupWizardViewModel : ObservableObject
             if (!llmCheck.Connected)
             {
                 throw new InvalidOperationException(
-                    $"تعذر الاتصال بخادم Ollama على {OllamaUrl}\n" +
-                    "تأكد من تشغيل Ollama وأنه يستمع على العنوان المحدد.\n\n" +
+                    $"Cannot connect to Ollama server at {OllamaUrl}\n" +
+                    "Ensure Ollama is running and listening on the configured URL.\n\n" +
                     "Cannot connect to Ollama server. Ensure it is running.");
             }
 
-            ProgressStatusText = "جارٍ التحقق من النماذج...";
+            ProgressStatusText = "Checking model availability...";
             var embCheck = await _downloadService.TestOllamaConnectionAsync(OllamaUrl, OllamaEmbeddingModel, ct);
             CurrentFileProgress = 0.66;
 
             var warnings = new List<string>();
             if (!llmCheck.ModelAvailable)
-                warnings.Add($"⚠ النموذج '{OllamaLlmModel}' غير متوفر. قم بتنفيذ: ollama pull {OllamaLlmModel}");
+                warnings.Add($"⚠ Model '{OllamaLlmModel}' is unavailable. Run: ollama pull {OllamaLlmModel}");
             if (!embCheck.ModelAvailable)
-                warnings.Add($"⚠ نموذج التضمين '{OllamaEmbeddingModel}' غير متوفر. قم بتنفيذ: ollama pull {OllamaEmbeddingModel}");
+                warnings.Add($"⚠ Embedding model '{OllamaEmbeddingModel}' is unavailable. Run: ollama pull {OllamaEmbeddingModel}");
 
             CurrentFileProgress = 1.0;
             OverallProgress = 1.0;
 
             SaveWizardSettings(
+                domainId: ResolveSelectedDomainId(),
+                customDomainId: IsCustomDomain ? CustomDomainId.Trim() : null,
                 llmProvider: "ollama",
                 llmModelPath: "",
                 embeddingProvider: "ollama",
@@ -722,16 +802,16 @@ public partial class SetupWizardViewModel : ObservableObject
 
             // ── Complete ──
             CurrentStep = StepComplete;
-            StepTitle = "اكتمل الإعداد";
+            StepTitle = "Setup complete";
             SetupSucceeded = llmCheck.Connected; // Succeed if connected, even if models need pulling
 
             if (warnings.Count == 0)
             {
-                CompletionMessage = "✓ Ollama متصل وجميع النماذج متوفرة. النظام جاهز.";
+                CompletionMessage = "✓ Ollama is connected and all models are available. System is ready.";
             }
             else
             {
-                CompletionMessage = "✓ Ollama متصل. بعض النماذج تحتاج تحميل:";
+                CompletionMessage = "✓ Ollama is connected. Some models still need download:";
                 ErrorDetails = string.Join("\n", warnings);
             }
 
@@ -741,16 +821,16 @@ public partial class SetupWizardViewModel : ObservableObject
         catch (OperationCanceledException)
         {
             CurrentStep = StepComplete;
-            StepTitle = "تم الإلغاء";
+            StepTitle = "Cancelled";
             SetupSucceeded = false;
-            CompletionMessage = "تم إلغاء الإعداد.";
+            CompletionMessage = "Setup was cancelled.";
         }
         catch (Exception ex)
         {
             CurrentStep = StepComplete;
-            StepTitle = "خطأ في الإعداد";
+            StepTitle = "Setup error";
             SetupSucceeded = false;
-            CompletionMessage = "فشل إعداد Ollama.";
+            CompletionMessage = "Ollama setup failed.";
             ErrorDetails = ex.Message;
             _logger.LogError(ex, "Ollama setup failed");
         }
@@ -762,6 +842,8 @@ public partial class SetupWizardViewModel : ObservableObject
     }
 
     private void SaveWizardSettings(
+        string domainId,
+        string? customDomainId,
         string llmProvider,
         string llmModelPath,
         string embeddingProvider,
@@ -774,6 +856,11 @@ public partial class SetupWizardViewModel : ObservableObject
 
         var config = new Dictionary<string, object>
         {
+            ["Domain"] = new Dictionary<string, object>
+            {
+                ["ActiveModule"] = domainId,
+                ["CustomModuleId"] = customDomainId ?? string.Empty
+            },
             ["Llm"] = new Dictionary<string, object>
             {
                 ["Provider"] = llmProvider,
@@ -800,4 +887,16 @@ public partial class SetupWizardViewModel : ObservableObject
         File.WriteAllText(configPath, json);
         _logger.LogInformation("Wizard settings saved to {Path}", configPath);
     }
+
+    private string ResolveSelectedDomainId()
+    {
+        if (IsCustomDomain)
+        {
+            return CustomDomainId.Trim().ToLowerInvariant();
+        }
+
+        return SelectedDomainId.Trim().ToLowerInvariant();
+    }
 }
+
+

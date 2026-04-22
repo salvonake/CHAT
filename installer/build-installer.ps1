@@ -34,6 +34,7 @@ param(
     [switch]$SkipModels,
     [switch]$SkipPrereqDownload,
     [switch]$SkipPublish,
+    [switch]$NoCleanOutput,
     [ValidateSet("Debug", "Release")]
     [string]$Configuration = "Release"
 )
@@ -49,6 +50,10 @@ $PrereqsDir  = Join-Path $InstallerDir "prereqs"
 $PlaceholderModelsDir = Join-Path $InstallerDir "models-placeholder"
 $DesktopProj = Join-Path $Root "src\LegalAI.Desktop\LegalAI.Desktop.csproj"
 $ExternalModelsManifest = Join-Path $OutputDir "external-models.manifest.json"
+
+if (-not [System.IO.Path]::IsPathRooted($ModelsPath)) {
+    $ModelsPath = Join-Path $InstallerDir $ModelsPath
+}
 
 $modelManifestEntries = @()
 $externalModelsMode = $false
@@ -85,6 +90,7 @@ Write-Host "===============================================" -ForegroundColor Cy
 Write-Host "  LegalAI Desktop - MSI + EXE Installer Build"  -ForegroundColor Cyan
 Write-Host "  Configuration : $Configuration"                -ForegroundColor Cyan
 Write-Host "  Models path   : $(if ($SkipModels) { '(skipped)' } else { $ModelsPath })" -ForegroundColor Cyan
+Write-Host "  Clean output  : $(if ($NoCleanOutput) { 'no' } else { 'yes' })" -ForegroundColor Cyan
 Write-Host "===============================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -355,6 +361,12 @@ if (-not (Test-Path $OutputDir)) {
     New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
 }
 
+if (-not $NoCleanOutput) {
+    Write-Host "  Cleaning previous installer artifacts from $OutputDir ..." -ForegroundColor DarkGray
+    Get-ChildItem -Path $OutputDir -File -ErrorAction SilentlyContinue |
+        Remove-Item -Force -ErrorAction SilentlyContinue
+}
+
 $manifestOutput = $null
 if ($modelManifestEntries.Count -gt 0) {
     $manifestMode = if ($externalModelsMode -or $SkipModels) { "external" } else { "embedded" }
@@ -413,6 +425,12 @@ if (-not (Test-Path $msiOutput)) {
 
 Write-Host "  [OK] MSI built: $msiOutput" -ForegroundColor Green
 
+$msiAliasOutput = Join-Path $OutputDir "LegalAI.Setup.msi"
+if (-not $msiOutput.Equals($msiAliasOutput, [StringComparison]::OrdinalIgnoreCase)) {
+    Copy-Item -Path $msiOutput -Destination $msiAliasOutput -Force
+}
+Write-Host "  [OK] MSI alias: $msiAliasOutput" -ForegroundColor Green
+
 # ─────────────────────────────────────────
 # Step 6: Build WiX EXE Bootstrapper (Burn)
 # ─────────────────────────────────────────
@@ -420,6 +438,7 @@ Write-Host "[6/6] Building WiX EXE bootstrapper (Burn Bundle)..." -ForegroundCol
 
 $exeBaseName = "LegalAI-Setup-$buildStamp"
 $exeOutput = Join-Path $OutputDir "$exeBaseName.exe"
+$setupAliasOutput = Join-Path $OutputDir "Setup.exe"
 
 if (Test-Path $exeOutput -PathType Container) {
     Remove-Item -Recurse -Force $exeOutput
@@ -458,7 +477,13 @@ else {
             $exeOutput = $exeCandidate.FullName
         }
     }
+    if ($exeOutput -and -not $exeOutput.Equals($setupAliasOutput, [StringComparison]::OrdinalIgnoreCase)) {
+        Copy-Item -Path $exeOutput -Destination $setupAliasOutput -Force
+    }
     Write-Host "  [OK] EXE built: $exeOutput" -ForegroundColor Green
+    if (Test-Path $setupAliasOutput) {
+        Write-Host "  [OK] EXE alias: $setupAliasOutput" -ForegroundColor Green
+    }
 }
 
 # ─────────────────────────────────────────
@@ -480,6 +505,9 @@ Write-Host "  [OK] Installer build completed!"               -ForegroundColor Gr
 Write-Host ""
 Write-Host "  MSI Output : $msiOutput"                       -ForegroundColor Green
 Write-Host "  MSI Size   : $msiSize"                         -ForegroundColor Green
+if (Test-Path $msiAliasOutput) {
+    Write-Host "  MSI Alias  : $msiAliasOutput"                  -ForegroundColor Green
+}
 if ($externalModelsMode) {
     Write-Host "  Model Mode : external (not bundled)"       -ForegroundColor Yellow
 }
@@ -489,12 +517,17 @@ if ($manifestOutput) {
 if ($exeOutput -and (Test-Path $exeOutput)) {
     Write-Host "  EXE Output : $exeOutput"                   -ForegroundColor Green
     Write-Host "  EXE Size   : $exeSize"                     -ForegroundColor Green
+    if (Test-Path $setupAliasOutput) {
+        Write-Host "  EXE Alias  : $setupAliasOutput"                -ForegroundColor Green
+    }
 }
 Write-Host ""
-Write-Host "  Install (MSI GUI)    : msiexec /i `"$msiOutput`""         -ForegroundColor White
-Write-Host "  Install (MSI silent) : msiexec /i `"$msiOutput`" /qn"     -ForegroundColor White
-if ($exeOutput) {
-    Write-Host "  Install (EXE GUI)    : `"$exeOutput`""                 -ForegroundColor White
-    Write-Host "  Install (EXE silent) : `"$exeOutput`" /quiet"          -ForegroundColor White
+$msiInstallPath = if (Test-Path $msiAliasOutput) { $msiAliasOutput } else { $msiOutput }
+$exeInstallPath = if (Test-Path $setupAliasOutput) { $setupAliasOutput } else { $exeOutput }
+Write-Host "  Install (MSI GUI)    : msiexec /i `"$msiInstallPath`""     -ForegroundColor White
+Write-Host "  Install (MSI silent) : msiexec /i `"$msiInstallPath`" /qn" -ForegroundColor White
+if ($exeInstallPath) {
+    Write-Host "  Install (EXE GUI)    : `"$exeInstallPath`""               -ForegroundColor White
+    Write-Host "  Install (EXE silent) : `"$exeInstallPath`" /quiet"        -ForegroundColor White
 }
 Write-Host "===============================================" -ForegroundColor Green

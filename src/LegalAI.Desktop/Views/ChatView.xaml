@@ -1,4 +1,4 @@
-<UserControl x:Class="LegalAI.Desktop.Views.ChatView"
+﻿<UserControl x:Class="LegalAI.Desktop.Views.ChatView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:LegalAI.Desktop.ViewModels"
@@ -6,7 +6,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
-             FlowDirection="RightToLeft"
+             FlowDirection="LeftToRight"
              FontFamily="Segoe UI, Amiri, Arial"
              FontSize="14">
 
@@ -45,13 +45,13 @@
                                 <Style TargetType="TextBlock">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding Role}" Value="User">
-                                            <Setter Property="Text" Value="أنت"/>
+                                            <Setter Property="Text" Value="You"/>
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding Role}" Value="Assistant">
-                                            <Setter Property="Text" Value="المساعد القانوني"/>
+                                            <Setter Property="Text" Value="Legal Assistant"/>
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding Role}" Value="System">
-                                            <Setter Property="Text" Value="النظام"/>
+                                            <Setter Property="Text" Value="System"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -66,14 +66,14 @@
                                    LineHeight="22"/>
 
                         <!-- Streaming indicator -->
-                        <TextBlock Text="⏳ جارٍ التوليد..."
+                        <TextBlock Text="⏳ Generating..."
                                    FontSize="12" Opacity="0.7"
                                    Foreground="{Binding Role, Converter={StaticResource RoleFg}}"
                                    Visibility="{Binding IsStreaming, Converter={StaticResource BoolVis}}"
                                    Margin="0,4,0,0"/>
 
                         <!-- Error indicator -->
-                        <TextBlock Text="⚠ خطأ"
+                        <TextBlock Text="⚠ Error"
                                    FontSize="12" Foreground="#EF5350"
                                    Visibility="{Binding IsError, Converter={StaticResource BoolVis}}"
                                    Margin="0,4,0,0"/>
@@ -114,7 +114,7 @@
                         </Border>
 
                         <!-- ── Citation toggle button ── -->
-                        <Button Content="{Binding Citations.Count, StringFormat=📎 {0} استشهاد}"
+                        <Button Content="{Binding Citations.Count, StringFormat=📎 {0} citations}"
                                 FontSize="11" Cursor="Hand"
                                 Visibility="{Binding HasCitations, Converter={StaticResource BoolVis}}"
                                 Command="{Binding DataContext.ToggleCitationsCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
@@ -136,7 +136,7 @@
                                                 <TextBlock Text="📄" FontSize="12" Margin="0,0,4,0"/>
                                                 <TextBlock Text="{Binding FileName}" FontWeight="SemiBold"
                                                            Foreground="#90CAF9" FontSize="12"/>
-                                                <TextBlock Text="{Binding PageNumber, StringFormat=صفحة {0}}"
+                                                <TextBlock Text="{Binding PageNumber, StringFormat=Page {0}}"
                                                            Foreground="#AAA" FontSize="11" Margin="8,0,0,0"/>
                                                 <TextBlock Text="{Binding SimilarityScore, StringFormat=({0:P0})}"
                                                            Foreground="#AAA" FontSize="11" Margin="8,0,0,0"/>
@@ -179,13 +179,13 @@
                 Visibility="{Binding IsLibraryOnlyMode, Converter={StaticResource BoolVis}}">
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" MaxWidth="500">
                 <TextBlock Text="⛔" FontSize="48" HorizontalAlignment="Center"/>
-                <TextBlock Text="وضع المكتبة فقط"
+                <TextBlock Text="Library-only mode"
                            FontSize="24" FontWeight="Bold" Foreground="#EF5350"
                            HorizontalAlignment="Center" Margin="0,12,0,8"/>
                 <TextBlock Text="{Binding LibraryOnlyReason}"
                            TextWrapping="Wrap" Foreground="#CCC" FontSize="14"
                            TextAlignment="Center" LineHeight="22"/>
-                <TextBlock Text="المحادثة معطّلة حتى يعود النظام للعمل بشكل كامل."
+                <TextBlock Text="Chat is disabled until the system is fully operational."
                            Foreground="#999" FontSize="13"
                            HorizontalAlignment="Center" Margin="0,12,0,0"/>
             </StackPanel>
@@ -202,13 +202,13 @@
             <Border Grid.Row="0" Background="#2D2D30" Padding="16,10">
                 <DockPanel>
                     <Button DockPanel.Dock="Left"
-                            Content="🗑 محادثة جديدة"
+                            Content="🗑 New chat"
                             Command="{Binding ClearChatCommand}"
                             Style="{StaticResource ButtonStyle}"
                             FontSize="12" Padding="12,6"
                             Background="#3C3C3C"/>
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                        <TextBlock Text="نطاق القضية:" Foreground="#999" FontSize="12"
+                        <TextBlock Text="Case namespace:" Foreground="#999" FontSize="12"
                                    VerticalAlignment="Center" Margin="0,0,6,0"/>
                         <TextBox Text="{Binding CaseNamespace, UpdateSourceTrigger=PropertyChanged}"
                                  Width="180" FontSize="12"
@@ -267,7 +267,7 @@
                             FontSize="15">
                         <Button.Style>
                             <Style TargetType="Button" BasedOn="{StaticResource ButtonStyle}">
-                                <Setter Property="Content" Value="إرسال ➤"/>
+                                <Setter Property="Content" Value="Send ➤"/>
                                 <Setter Property="Background" Value="#0078D4"/>
                                 <Setter Property="Foreground" Value="White"/>
                                 <Style.Triggers>
@@ -292,3 +292,4 @@
         </Grid>
     </Grid>
 </UserControl>
+

@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using LegalAI.Domain.Interfaces;
 using LegalAI.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using DomainQueryAnalysis = LegalAI.Domain.ValueObjects.QueryAnalysis;
@@ -9,7 +10,7 @@ namespace LegalAI.Retrieval.QueryAnalysis;
 /// Analyzes user queries to determine type, extract legal entities,
 /// generate semantic variants, and normalize Arabic text for retrieval.
 /// </summary>
-public sealed partial class LegalQueryAnalyzer
+public sealed partial class LegalQueryAnalyzer : IDomainQueryAnalyzer
 {
     private readonly ILogger<LegalQueryAnalyzer> _logger;
 

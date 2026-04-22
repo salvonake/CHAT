@@ -108,6 +108,15 @@ public sealed class LegalRetrievalPipelineTests : IDisposable
             .ReturnsAsync(chunks.ToList());
     }
 
+    private void SetupScopedVectorSearch(params RetrievedChunk[] chunks)
+    {
+        _vectorStore.Setup(v => v.SearchAsync(
+                It.IsAny<float[]>(), It.IsAny<int>(), It.IsAny<double>(),
+                It.IsAny<string?>(), It.IsAny<CancellationToken>(),
+                It.IsAny<string?>(), It.IsAny<string?>()))
+            .ReturnsAsync(chunks.ToList());
+    }
+
     // ══════════════════════════════════════
     //  Cache
     // ══════════════════════════════════════
@@ -192,6 +201,54 @@ public sealed class LegalRetrievalPipelineTests : IDisposable
         _vectorStore.Verify(v => v.SearchAsync(
             It.IsAny<float[]>(), It.IsAny<int>(), It.IsAny<double>(),
             "myns", It.IsAny<CancellationToken>()), Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task RetrieveAsync_PassesExplicitDomainAndDatasetFilters_ToVectorStore()
+    {
+        SetupEmbedding();
+        SetupScopedVectorSearch(MakeRetrievedChunk());
+
+        var pipeline = CreatePipeline();
+        await pipeline.RetrieveAsync(
+            "query",
+            DefaultConfig(hybrid: false),
+            "legal:contracts",
+            CancellationToken.None,
+            "legal",
+            "contracts");
+
+        _vectorStore.Verify(v => v.SearchAsync(
+            It.IsAny<float[]>(),
+            It.IsAny<int>(),
+            It.IsAny<double>(),
+            "legal:contracts",
+            It.IsAny<CancellationToken>(),
+            "legal",
+            "contracts"), Times.AtLeastOnce);
+    }
+
+    [Fact]
+    public async Task RetrieveAsync_DerivesDomainAndDatasetFilters_FromNamespace()
+    {
+        SetupEmbedding();
+        SetupScopedVectorSearch(MakeRetrievedChunk());
+
+        var pipeline = CreatePipeline();
+        await pipeline.RetrieveAsync(
+            "query",
+            DefaultConfig(hybrid: false),
+            "legal:contracts",
+            CancellationToken.None);
+
+        _vectorStore.Verify(v => v.SearchAsync(
+            It.IsAny<float[]>(),
+            It.IsAny<int>(),
+            It.IsAny<double>(),
+            "legal:contracts",
+            It.IsAny<CancellationToken>(),
+            "legal",
+            "contracts"), Times.AtLeastOnce);
     }
 
     [Fact]

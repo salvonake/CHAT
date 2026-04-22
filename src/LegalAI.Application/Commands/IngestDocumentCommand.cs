@@ -2,6 +2,7 @@ using LegalAI.Domain.Entities;
 using LegalAI.Domain.Interfaces;
 using MediatR;
 using Microsoft.Extensions.Logging;
+using LegalAI.Application.Services;
 
 namespace LegalAI.Application.Commands;
 
@@ -11,6 +12,9 @@ namespace LegalAI.Application.Commands;
 public sealed class IngestDocumentCommand : IRequest<IngestDocumentResult>
 {
     public required string FilePath { get; init; }
+    public string? DomainId { get; init; }
+    public string? DatasetId { get; init; }
+    public string? DatasetScope { get; init; }
     public string? CaseNamespace { get; init; }
     public string? UserId { get; init; }
 }
@@ -58,6 +62,11 @@ public sealed class IngestDocumentHandler : IRequestHandler<IngestDocumentComman
     public async Task<IngestDocumentResult> Handle(IngestDocumentCommand request, CancellationToken ct)
     {
         var sw = System.Diagnostics.Stopwatch.StartNew();
+        var resolvedDomainId = NormalizeScopeValue(request.DomainId);
+        var resolvedDatasetId = NormalizeScopeValue(request.DatasetId);
+        var resolvedDatasetScope = NormalizeScopeValue(request.DatasetScope);
+        var resolvedCaseNamespace = request.CaseNamespace
+            ?? ScopeNamespaceBuilder.Build(resolvedDomainId, resolvedDatasetScope ?? resolvedDatasetId);
 
         try
         {
@@ -92,7 +101,9 @@ public sealed class IngestDocumentHandler : IRequestHandler<IngestDocumentComman
                 ContentHash = contentHash,
                 FileSizeBytes = fileBytes.Length,
                 Status = DocumentStatus.Indexing,
-                CaseNamespace = request.CaseNamespace,
+                DomainId = resolvedDomainId,
+                DatasetId = resolvedDatasetId,
+                CaseNamespace = resolvedCaseNamespace,
                 LastModified = File.GetLastWriteTimeUtc(request.FilePath)
             };
 
@@ -115,7 +126,14 @@ public sealed class IngestDocumentHandler : IRequestHandler<IngestDocumentComman
 
             // Step 2: Chunk document
             var chunks = _chunker.ChunkDocument(
-                document.Id, document.FileName, extraction, request.CaseNamespace);
+                document.Id, document.FileName, extraction, resolvedCaseNamespace);
+
+            foreach (var chunk in chunks)
+            {
+                chunk.DomainId = resolvedDomainId;
+                chunk.DatasetId = resolvedDatasetId;
+                chunk.DatasetScope = resolvedDatasetScope;
+            }
 
             if (chunks.Count == 0)
             {
@@ -223,5 +241,12 @@ public sealed class IngestDocumentHandler : IRequestHandler<IngestDocumentComman
     {
         var hash = System.Security.Cryptography.SHA256.HashData(data);
         return Convert.ToHexString(hash).ToLowerInvariant();
+    }
+
+    private static string? NormalizeScopeValue(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? null
+            : value.Trim().ToLowerInvariant();
     }
 }

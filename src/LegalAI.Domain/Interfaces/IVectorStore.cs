@@ -28,6 +28,18 @@ public interface IVectorStore
         CancellationToken ct = default);
 
     /// <summary>
+    /// Searches with explicit domain/dataset scope filters in addition to namespace.
+    /// </summary>
+    Task<List<RetrievedChunk>> SearchAsync(
+        float[] queryEmbedding,
+        int topK,
+        double scoreThreshold,
+        string? caseNamespace,
+        CancellationToken ct,
+        string? domainId = null,
+        string? datasetScope = null);
+
+    /// <summary>
     /// Deletes all chunks belonging to a document.
     /// </summary>
     Task DeleteByDocumentIdAsync(string documentId, CancellationToken ct = default);

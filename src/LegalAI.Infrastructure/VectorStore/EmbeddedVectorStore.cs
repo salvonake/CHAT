@@ -107,7 +107,12 @@ public sealed class EmbeddedVectorStore : IVectorStore, IDisposable
                 // HNSW insert
                 _vectors[chunk.Id] = chunk.Embedding;
                 _metaCache[chunk.Id] = new ChunkMeta(
-                    chunk.DocumentId, chunk.CaseNamespace, chunk.ContentHash);
+                    chunk.DocumentId,
+                    chunk.CaseNamespace,
+                    NormalizeScopeValue(chunk.DomainId),
+                    NormalizeScopeValue(chunk.DatasetId),
+                    NormalizeScopeValue(chunk.DatasetScope),
+                    chunk.ContentHash);
                 InsertIntoGraph(chunk.Id, chunk.Embedding);
             }
 
@@ -124,11 +129,29 @@ public sealed class EmbeddedVectorStore : IVectorStore, IDisposable
     //  IVectorStore.SearchAsync
     // ─────────────────────────────────────────────
     public Task<List<RetrievedChunk>> SearchAsync(
-        float[] queryEmbedding, int topK, double scoreThreshold = 0.0,
-        string? caseNamespace = null, CancellationToken ct = default)
+        float[] queryEmbedding,
+        int topK,
+        double scoreThreshold = 0.0,
+        string? caseNamespace = null,
+        CancellationToken ct = default)
+    {
+        return SearchAsync(queryEmbedding, topK, scoreThreshold, caseNamespace, ct, null, null);
+    }
+
+    public Task<List<RetrievedChunk>> SearchAsync(
+        float[] queryEmbedding,
+        int topK,
+        double scoreThreshold,
+        string? caseNamespace,
+        CancellationToken ct,
+        string? domainId = null,
+        string? datasetScope = null)
     {
         if (_vectors.IsEmpty)
             return Task.FromResult(new List<RetrievedChunk>());
+
+        var normalizedDomainId = NormalizeScopeValue(domainId);
+        var normalizedDatasetScope = NormalizeScopeValue(datasetScope);
 
         // Search with extra candidates to accommodate filtering
         var efSearch = Math.Max(HnswEfSearch, topK * 4);
@@ -141,8 +164,20 @@ public sealed class EmbeddedVectorStore : IVectorStore, IDisposable
         foreach (var (id, score) in candidates)
         {
             if (score < scoreThreshold) continue;
-            if (caseNamespace != null && _metaCache.TryGetValue(id, out var meta)
-                && meta.CaseNamespace != caseNamespace)
+
+            if (!_metaCache.TryGetValue(id, out var meta))
+                continue;
+
+            if (!string.IsNullOrEmpty(caseNamespace)
+                && !string.Equals(meta.CaseNamespace, caseNamespace, StringComparison.Ordinal))
+                continue;
+
+            if (!string.IsNullOrEmpty(normalizedDomainId)
+                && !string.Equals(meta.DomainId, normalizedDomainId, StringComparison.Ordinal))
+                continue;
+
+            if (!string.IsNullOrEmpty(normalizedDatasetScope)
+                && !string.Equals(meta.DatasetScope, normalizedDatasetScope, StringComparison.Ordinal))
                 continue;
 
             var chunk = LoadChunkFromDb(conn, id);
@@ -499,6 +534,9 @@ public sealed class EmbeddedVectorStore : IVectorStore, IDisposable
                 case_number TEXT,
                 court_name TEXT,
                 case_date TEXT,
+                domain_id TEXT,
+                dataset_id TEXT,
+                dataset_scope TEXT,
                 case_namespace TEXT,
                 content_hash TEXT NOT NULL,
                 token_count INTEGER NOT NULL DEFAULT 0,
@@ -509,10 +547,16 @@ public sealed class EmbeddedVectorStore : IVectorStore, IDisposable
             CREATE INDEX IF NOT EXISTS idx_vc_document_id ON vector_chunks(document_id);
             CREATE INDEX IF NOT EXISTS idx_vc_content_hash ON vector_chunks(content_hash);
             CREATE INDEX IF NOT EXISTS idx_vc_case_namespace ON vector_chunks(case_namespace);
+            CREATE INDEX IF NOT EXISTS idx_vc_domain_id ON vector_chunks(domain_id);
+            CREATE INDEX IF NOT EXISTS idx_vc_dataset_scope ON vector_chunks(dataset_scope);
             CREATE INDEX IF NOT EXISTS idx_vc_article_ref ON vector_chunks(article_reference);
             CREATE INDEX IF NOT EXISTS idx_vc_case_number ON vector_chunks(case_number);
             """;
         cmd.ExecuteNonQuery();
+
+        EnsureColumnExists(conn, "vector_chunks", "domain_id", "TEXT");
+        EnsureColumnExists(conn, "vector_chunks", "dataset_id", "TEXT");
+        EnsureColumnExists(conn, "vector_chunks", "dataset_scope", "TEXT");
     }
 
     private void UpsertChunkToDb(SqliteConnection conn, DocumentChunk chunk)
@@ -522,11 +566,13 @@ public sealed class EmbeddedVectorStore : IVectorStore, IDisposable
             INSERT OR REPLACE INTO vector_chunks
                 (id, document_id, content, embedding, chunk_index, page_number,
                  section_title, article_reference, case_number, court_name,
-                 case_date, case_namespace, content_hash, token_count, source_file_name)
+                 case_date, domain_id, dataset_id, dataset_scope, case_namespace,
+                 content_hash, token_count, source_file_name)
             VALUES
                 (@id, @docId, @content, @embedding, @chunkIndex, @pageNum,
                  @section, @article, @caseNum, @court,
-                 @caseDate, @caseNs, @hash, @tokens, @srcFile)
+                 @caseDate, @domainId, @datasetId, @datasetScope, @caseNs,
+                 @hash, @tokens, @srcFile)
             """;
         cmd.Parameters.AddWithValue("@id", chunk.Id);
         cmd.Parameters.AddWithValue("@docId", chunk.DocumentId);
@@ -539,6 +585,9 @@ public sealed class EmbeddedVectorStore : IVectorStore, IDisposable
         cmd.Parameters.AddWithValue("@caseNum", (object?)chunk.CaseNumber ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@court", (object?)chunk.CourtName ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@caseDate", (object?)chunk.CaseDate ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@domainId", (object?)NormalizeScopeValue(chunk.DomainId) ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@datasetId", (object?)NormalizeScopeValue(chunk.DatasetId) ?? DBNull.Value);
+        cmd.Parameters.AddWithValue("@datasetScope", (object?)NormalizeScopeValue(chunk.DatasetScope) ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@caseNs", (object?)chunk.CaseNamespace ?? DBNull.Value);
         cmd.Parameters.AddWithValue("@hash", chunk.ContentHash);
         cmd.Parameters.AddWithValue("@tokens", chunk.TokenCount);
@@ -552,7 +601,8 @@ public sealed class EmbeddedVectorStore : IVectorStore, IDisposable
         cmd.CommandText = """
             SELECT id, document_id, content, embedding, chunk_index, page_number,
                    section_title, article_reference, case_number, court_name,
-                   case_date, case_namespace, content_hash, token_count, source_file_name
+                 case_date, domain_id, dataset_id, dataset_scope, case_namespace,
+                 content_hash, token_count, source_file_name
             FROM vector_chunks WHERE id = @id
             """;
         cmd.Parameters.AddWithValue("@id", id);
@@ -573,10 +623,13 @@ public sealed class EmbeddedVectorStore : IVectorStore, IDisposable
             CaseNumber = reader.IsDBNull(8) ? null : reader.GetString(8),
             CourtName = reader.IsDBNull(9) ? null : reader.GetString(9),
             CaseDate = reader.IsDBNull(10) ? null : reader.GetString(10),
-            CaseNamespace = reader.IsDBNull(11) ? null : reader.GetString(11),
-            ContentHash = reader.GetString(12),
-            TokenCount = reader.GetInt32(13),
-            SourceFileName = reader.GetString(14)
+            DomainId = reader.IsDBNull(11) ? null : reader.GetString(11),
+            DatasetId = reader.IsDBNull(12) ? null : reader.GetString(12),
+            DatasetScope = reader.IsDBNull(13) ? null : reader.GetString(13),
+            CaseNamespace = reader.IsDBNull(14) ? null : reader.GetString(14),
+            ContentHash = reader.GetString(15),
+            TokenCount = reader.GetInt32(16),
+            SourceFileName = reader.GetString(17)
         };
     }
 
@@ -584,7 +637,7 @@ public sealed class EmbeddedVectorStore : IVectorStore, IDisposable
     {
         using var conn = OpenConnection();
         using var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT id, document_id, embedding, case_namespace, content_hash FROM vector_chunks";
+        cmd.CommandText = "SELECT id, document_id, embedding, case_namespace, domain_id, dataset_id, dataset_scope, content_hash FROM vector_chunks";
 
         using var reader = await cmd.ExecuteReaderAsync(ct);
         var count = 0;
@@ -595,12 +648,21 @@ public sealed class EmbeddedVectorStore : IVectorStore, IDisposable
             var docId = reader.GetString(1);
             var embedding = BlobToFloats((byte[])reader[2]);
             var caseNs = reader.IsDBNull(3) ? null : reader.GetString(3);
-            var hash = reader.GetString(4);
+            var domainId = reader.IsDBNull(4) ? null : reader.GetString(4);
+            var datasetId = reader.IsDBNull(5) ? null : reader.GetString(5);
+            var datasetScope = reader.IsDBNull(6) ? null : reader.GetString(6);
+            var hash = reader.GetString(7);
 
             if (_embeddingDim == 0) _embeddingDim = embedding.Length;
 
             _vectors[id] = embedding;
-            _metaCache[id] = new ChunkMeta(docId, caseNs, hash);
+            _metaCache[id] = new ChunkMeta(
+                docId,
+                caseNs,
+                NormalizeScopeValue(domainId),
+                NormalizeScopeValue(datasetId),
+                NormalizeScopeValue(datasetScope),
+                hash);
             InsertIntoGraph(id, embedding);
             count++;
 
@@ -648,6 +710,36 @@ public sealed class EmbeddedVectorStore : IVectorStore, IDisposable
         return floats;
     }
 
+    private static void EnsureColumnExists(
+        SqliteConnection connection,
+        string tableName,
+        string columnName,
+        string columnType)
+    {
+        using var checkCommand = connection.CreateCommand();
+        checkCommand.CommandText = $"PRAGMA table_info({tableName})";
+
+        using var reader = checkCommand.ExecuteReader();
+        while (reader.Read())
+        {
+            if (string.Equals(reader.GetString(1), columnName, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+        }
+
+        using var alterCommand = connection.CreateCommand();
+        alterCommand.CommandText = $"ALTER TABLE {tableName} ADD COLUMN {columnName} {columnType}";
+        alterCommand.ExecuteNonQuery();
+    }
+
+    private static string? NormalizeScopeValue(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? null
+            : value.Trim().ToLowerInvariant();
+    }
+
     // ═══════════════════════════════════════════════
     //  HELPERS
     // ═══════════════════════════════════════════════
@@ -662,7 +754,13 @@ public sealed class EmbeddedVectorStore : IVectorStore, IDisposable
         }
     }
 
-    private sealed record ChunkMeta(string DocumentId, string? CaseNamespace, string ContentHash);
+    private sealed record ChunkMeta(
+        string DocumentId,
+        string? CaseNamespace,
+        string? DomainId,
+        string? DatasetId,
+        string? DatasetScope,
+        string ContentHash);
 
     public void Dispose()
     {

@@ -163,7 +163,7 @@ public sealed class HealthViewModelTests : IDisposable
     {
         _modelIntegrity.SetupGet(m => m.DetectedGpuInfo).Returns((string?)null);
         var vm = CreateVm();
-        vm.GpuStatus.Should().Be("غير محدد");
+        vm.GpuStatus.Should().Be("Unknown");
     }
 
     // ═══════════════════════════════════════
@@ -360,7 +360,7 @@ public sealed class HealthViewModelTests : IDisposable
         await vm.RefreshAllCommand.ExecuteAsync(null);
 
         vm.VectorStoreHealthy.Should().BeFalse();
-        vm.VectorStoreStatus.Should().Contain("خطأ");
+        vm.VectorStoreStatus.Should().Contain("Error");
     }
 
     [Fact]

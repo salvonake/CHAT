@@ -16,6 +16,7 @@ public sealed class FileWatcherServiceTests : IDisposable
     private readonly Mock<IMediator> _mediator = new();
     private readonly Mock<IMetricsCollector> _metrics = new();
     private readonly Mock<IAuditService> _audit = new();
+    private readonly Mock<IIngestionJobStore> _jobs = new();
     private readonly string _tempDir;
     private readonly IConfiguration _config;
 
@@ -27,7 +28,10 @@ public sealed class FileWatcherServiceTests : IDisposable
         _config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Data:PdfWatchDirectory"] = Path.Combine(_tempDir, "pdfs")
+                ["Data:PdfWatchDirectory"] = Path.Combine(_tempDir, "pdfs"),
+                ["Data:QuarantineDirectory"] = Path.Combine(_tempDir, "quarantine"),
+                ["Ingestion:MaxRetryAttempts"] = "3",
+                ["Ingestion:RetryBackoffSeconds"] = "1"
             })
             .Build();
 
@@ -35,6 +39,45 @@ public sealed class FileWatcherServiceTests : IDisposable
             It.IsAny<string>(), It.IsAny<string>(),
             It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+
+        _jobs.Setup(j => j.GetByFileAndHashAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((LegalAI.Domain.Entities.IngestionJob?)null);
+
+        _jobs.Setup(j => j.CreateAsync(
+                It.IsAny<LegalAI.Domain.Entities.IngestionJob>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync((LegalAI.Domain.Entities.IngestionJob job, CancellationToken _) => job);
+
+        _jobs.Setup(j => j.MarkRunningAsync(
+                It.IsAny<string>(),
+                It.IsAny<int>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _jobs.Setup(j => j.MarkSucceededAsync(
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _jobs.Setup(j => j.MarkFailedAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<DateTimeOffset?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _jobs.Setup(j => j.MarkQuarantinedAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        _jobs.Setup(j => j.GetRecentAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
     }
 
     public void Dispose()
@@ -43,7 +86,7 @@ public sealed class FileWatcherServiceTests : IDisposable
     }
 
     private FileWatcherService CreateSut() =>
-        new(_logger.Object, _mediator.Object, _metrics.Object, _audit.Object, _config);
+        new(_logger.Object, _mediator.Object, _metrics.Object, _audit.Object, _jobs.Object, _config);
 
     // ─── Construction ────────────────────────────────────────────
 
@@ -63,7 +106,7 @@ public sealed class FileWatcherServiceTests : IDisposable
             .Build();
 
         var sut = new FileWatcherService(
-            _logger.Object, _mediator.Object, _metrics.Object, _audit.Object, emptyConfig);
+            _logger.Object, _mediator.Object, _metrics.Object, _audit.Object, _jobs.Object, emptyConfig);
 
         sut.Should().NotBeNull();
     }

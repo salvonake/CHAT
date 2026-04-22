@@ -1,10 +1,10 @@
 using System.Collections.Specialized;
 using System.Globalization;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using LegalAI.Desktop.ViewModels;
+using UserControl = System.Windows.Controls.UserControl;
 
 namespace LegalAI.Desktop.Views
 {

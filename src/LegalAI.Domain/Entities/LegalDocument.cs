@@ -16,6 +16,8 @@ public sealed class LegalDocument
     public DocumentStatus Status { get; set; } = DocumentStatus.Pending;
     public string? ErrorMessage { get; set; }
     public int FailureCount { get; set; }
+    public string? DomainId { get; set; }
+    public string? DatasetId { get; set; }
     public string? CaseNamespace { get; set; }
 
     /// <summary>

@@ -139,7 +139,7 @@ public sealed class DocumentsViewModelTests
 
         vm.QuarantinedDocuments.Should().ContainSingle();
         vm.QuarantinedDocuments[0].Status.Should().Be("Quarantined");
-        vm.QuarantinedDocuments[0].StatusArabic.Should().Be("محجور");
+        vm.QuarantinedDocuments[0].StatusArabic.Should().Be("Quarantined");
         vm.QuarantinedDocuments[0].FailureReason.Should().Be("extraction failure");
     }
 
@@ -193,11 +193,11 @@ public sealed class DocumentsViewModelTests
     // ─── Status Arabic Mapping ────────────────────────────────────
 
     [Theory]
-    [InlineData(DocumentStatus.Pending, "بانتظار الفهرسة")]
-    [InlineData(DocumentStatus.Indexing, "جارٍ الفهرسة")]
-    [InlineData(DocumentStatus.Indexed, "مفهرس")]
-    [InlineData(DocumentStatus.Failed, "فشل")]
-    [InlineData(DocumentStatus.Quarantined, "محجور")]
+    [InlineData(DocumentStatus.Pending, "Pending indexing")]
+    [InlineData(DocumentStatus.Indexing, "Indexing")]
+    [InlineData(DocumentStatus.Indexed, "Indexed")]
+    [InlineData(DocumentStatus.Failed, "Failed")]
+    [InlineData(DocumentStatus.Quarantined, "Quarantined")]
     public async Task Documents_HaveCorrectArabicStatus(DocumentStatus status, string expectedArabic)
     {
         _docStore.Setup(d => d.GetAllAsync(It.IsAny<CancellationToken>()))

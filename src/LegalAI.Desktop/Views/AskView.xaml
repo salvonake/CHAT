@@ -1,7 +1,7 @@
-<UserControl x:Class="LegalAI.Desktop.Views.AskView"
+﻿<UserControl x:Class="LegalAI.Desktop.Views.AskView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             FlowDirection="RightToLeft"
+             FlowDirection="LeftToRight"
              FontFamily="{StaticResource ArabicFont}"
              Background="{StaticResource BackgroundBrush}">
 
@@ -27,7 +27,7 @@
                 BorderThickness="1"
                 Visibility="{Binding IsLibraryOnlyMode, Converter={StaticResource BoolToVis}}">
             <StackPanel>
-                <TextBlock Text="⛔ وضع المكتبة فقط — الاستعلام القانوني معطّل"
+                <TextBlock Text="⛔ Library-only mode — legal querying disabled"
                            Style="{StaticResource BodyText}"
                            Foreground="{StaticResource DangerBrush}"
                            FontWeight="Bold"
@@ -38,7 +38,7 @@
                            TextWrapping="Wrap"
                            Opacity="0.85"
                            Margin="0,6,0,0"/>
-                <TextBlock Text="يمكنك تصفح الوثائق وإدارتها، لكن لا يمكن طرح الأسئلة حتى يتم حل المشكلة."
+                <TextBlock Text="You can browse and manage documents, but asking questions is disabled until this issue is resolved."
                            Style="{StaticResource BodyText}"
                            Foreground="{StaticResource TextSecondaryBrush}"
                            Margin="0,4,0,0"/>
@@ -105,7 +105,7 @@
                                   FontFamily="{StaticResource ArabicFont}"
                                   VerticalAlignment="Center"/>
                         <TextBlock Text="🔒" FontSize="12" VerticalAlignment="Center" Margin="4,0,0,0"
-                                   ToolTip="الوضع الصارم مقفل دائماً — نظام حيوي"/>
+                                   ToolTip="Strict mode is always locked — safety-critical system"/>
                     </StackPanel>
 
                     <!-- TopK -->
@@ -195,7 +195,7 @@
                 <!-- Answer Text -->
                 <Border Style="{StaticResource Card}" Margin="0,0,0,12">
                     <StackPanel>
-                        <TextBlock Text="الإجابة"
+                        <TextBlock Text="Answer"
                                    Style="{StaticResource SectionHeader}"
                                    FontSize="15"/>
                         <TextBlock Text="{Binding AnswerText}"
@@ -264,7 +264,7 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <TextBlock Text="⚖ لا تعتمد على هذه الإجابة في اتخاذ قرارات قانونية دون مراجعة مستقلة."
+                        <TextBlock Text="⚖ Do not rely on this answer for legal decisions without independent review."
                                    Style="{StaticResource BodyText}"
                                    Foreground="{StaticResource TextSecondaryBrush}"
                                    FontWeight="SemiBold"
@@ -328,3 +328,4 @@
         </ScrollViewer>
     </Grid>
 </UserControl>
+

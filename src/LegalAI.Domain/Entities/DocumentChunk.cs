@@ -15,6 +15,9 @@ public sealed class DocumentChunk
     public string? CaseNumber { get; set; }
     public string? CourtName { get; set; }
     public string? CaseDate { get; set; }
+    public string? DomainId { get; set; }
+    public string? DatasetId { get; set; }
+    public string? DatasetScope { get; set; }
     public string? CaseNamespace { get; set; }
     public required string ContentHash { get; init; }
     public int TokenCount { get; set; }

@@ -1,4 +1,5 @@
 using LegalAI.Domain.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace LegalAI.Api.Controllers;
@@ -8,6 +9,7 @@ namespace LegalAI.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api")]
+[Authorize(Roles = "Admin")]
 public sealed class OpsController : ControllerBase
 {
     private readonly IVectorStore _vectorStore;

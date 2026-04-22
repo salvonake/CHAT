@@ -85,7 +85,7 @@ public sealed class ModelIntegrityServiceTests : IDisposable
 
         svc.LlmModelExists.Should().BeFalse();
         svc.LlmModelValid.Should().BeFalse();
-        svc.LlmError.Should().Contain("غير موجود").And.Contain("not found");
+        svc.LlmError.Should().Contain("not found");
     }
 
     // ══════════════════════════════════════

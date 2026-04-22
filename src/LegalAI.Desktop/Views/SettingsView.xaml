@@ -1,7 +1,7 @@
-<UserControl x:Class="LegalAI.Desktop.Views.SettingsView"
+﻿<UserControl x:Class="LegalAI.Desktop.Views.SettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             FlowDirection="RightToLeft"
+             FlowDirection="LeftToRight"
              FontFamily="{StaticResource ArabicFont}"
              Background="{StaticResource BackgroundBrush}">
 
@@ -17,7 +17,7 @@
                  ══════════════════════════════ -->
             <Border Style="{StaticResource Card}" Margin="0,0,0,16">
                 <StackPanel>
-                    <TextBlock Text="اللغة / Langue"
+                    <TextBlock Text="Language"
                                Style="{StaticResource SectionHeader}"/>
 
                     <Grid>
@@ -25,7 +25,7 @@
                             <ColumnDefinition Width="170"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="لغة الواجهة الافتراضية:"
+                        <TextBlock Text="Default UI language:"
                                    Style="{StaticResource SecondaryText}"
                                    VerticalAlignment="Center"/>
                         <ComboBox Grid.Column="1"
@@ -34,12 +34,43 @@
                                   Background="{StaticResource SurfaceLightBrush}"
                                   Foreground="{StaticResource TextPrimaryBrush}"
                                   FontFamily="{StaticResource ArabicFont}">
-                            <ComboBoxItem Content="Français (par défaut)" Tag="fr-FR"/>
-                            <ComboBoxItem Content="العربية" Tag="ar"/>
+                            <ComboBoxItem Content="English (default)" Tag="en-US"/>
+                            <ComboBoxItem Content="Arabic" Tag="ar"/>
                         </ComboBox>
                     </Grid>
 
-                    <TextBlock Text="يتم تطبيق اللغة بعد إعادة تشغيل التطبيق."
+                    <TextBlock Text="Language changes are applied after restart."
+                               Style="{StaticResource SecondaryText}"
+                               Margin="0,8,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <!-- ══════════════════════════════
+                 DESKTOP BEHAVIOR
+                 ══════════════════════════════ -->
+            <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+                <StackPanel>
+                    <TextBlock Text="Desktop behavior"
+                               Style="{StaticResource SectionHeader}"/>
+
+                    <CheckBox Content="Minimize to tray when closing the window"
+                              IsChecked="{Binding MinimizeToTrayOnClose}"
+                              Foreground="{StaticResource TextPrimaryBrush}"
+                              FontFamily="{StaticResource ArabicFont}"
+                              Margin="0,0,0,10"/>
+
+                    <CheckBox Content="Minimize to tray when pressing Minimize"
+                              IsChecked="{Binding MinimizeToTrayOnMinimize}"
+                              Foreground="{StaticResource TextPrimaryBrush}"
+                              FontFamily="{StaticResource ArabicFont}"
+                              Margin="0,0,0,10"/>
+
+                    <CheckBox Content="Show background notifications"
+                              IsChecked="{Binding ShowBackgroundNotifications}"
+                              Foreground="{StaticResource TextPrimaryBrush}"
+                              FontFamily="{StaticResource ArabicFont}"/>
+
+                    <TextBlock Text="These options apply after restart."
                                Style="{StaticResource SecondaryText}"
                                Margin="0,8,0,0"/>
                 </StackPanel>
@@ -95,7 +126,7 @@
                             <ColumnDefinition Width="140"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Text="مزود LLM:"
+                        <TextBlock Text="LLM provider:"
                                    Style="{StaticResource SecondaryText}"
                                    VerticalAlignment="Center"/>
                         <ComboBox Grid.Column="1"
@@ -104,8 +135,8 @@
                                   Background="{StaticResource SurfaceLightBrush}"
                                   Foreground="{StaticResource TextPrimaryBrush}"
                                   FontFamily="{StaticResource ArabicFont}">
-                            <ComboBoxItem Content="LLamaSharp (مضمّن)" Tag="llamasharp"/>
-                            <ComboBoxItem Content="Ollama (خارجي)" Tag="ollama"/>
+                            <ComboBoxItem Content="LLamaSharp (embedded)" Tag="llamasharp"/>
+                            <ComboBoxItem Content="Ollama (external)" Tag="ollama"/>
                         </ComboBox>
                     </Grid>
 
@@ -171,7 +202,7 @@
                                      Style="{StaticResource ArabicTextBox}"
                                      FontSize="12"
                                      FlowDirection="LeftToRight"/>
-                            <TextBlock Text="(-1 = جميع الطبقات على GPU)"
+                            <TextBlock Text="(-1 = all layers on GPU)"
                                        Style="{StaticResource SecondaryText}"
                                        FontSize="10"
                                        Margin="0,4,0,0"/>
@@ -239,7 +270,7 @@
                                   Margin="0,0,8,0"/>
                         <TextBlock Text="🔒" FontSize="12" VerticalAlignment="Center"
                                    ToolTip="{Binding StrictModeLockReason}"/>
-                        <TextBlock Text="(مقفل — نظام حيوي)"
+                        <TextBlock Text="(Locked — safety-critical system)"
                                    Style="{StaticResource SecondaryText}"
                                    VerticalAlignment="Center"
                                    Margin="8,0,24,0"
@@ -286,7 +317,7 @@
                                  Style="{StaticResource ArabicTextBox}"
                                  FontSize="12"
                                  Width="100"
-                                 HorizontalAlignment="Right"
+                                 HorizontalAlignment="Left"
                                  FlowDirection="LeftToRight"/>
                     </StackPanel>
 
@@ -297,7 +328,7 @@
                                    Margin="0,0,0,4"/>
                         <DockPanel>
                             <Button DockPanel.Dock="Left"
-                                    Content="فتح"
+                                    Content="Open"
                                     Style="{StaticResource SecondaryButton}"
                                     Command="{Binding OpenDataDirectoryCommand}"
                                     Margin="8,0,0,0"
@@ -329,3 +360,4 @@
         </StackPanel>
     </ScrollViewer>
 </UserControl>
+

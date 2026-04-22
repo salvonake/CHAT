@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text;
+using LegalAI.Application.Services;
 using LegalAI.Domain.Entities;
 using LegalAI.Domain.Interfaces;
 using LegalAI.Domain.ValueObjects;
@@ -21,7 +22,7 @@ public sealed class LegalRetrievalPipeline : IRetrievalPipeline
 {
     private readonly IVectorStore _vectorStore;
     private readonly IEmbeddingService _embedder;
-    private readonly LegalQueryAnalyzer _queryAnalyzer;
+    private readonly IDomainQueryAnalyzer _queryAnalyzer;
     private readonly BM25Index _bm25Index;
     private readonly IMemoryCache _cache;
     private readonly IMetricsCollector _metrics;
@@ -30,7 +31,7 @@ public sealed class LegalRetrievalPipeline : IRetrievalPipeline
     public LegalRetrievalPipeline(
         IVectorStore vectorStore,
         IEmbeddingService embedder,
-        LegalQueryAnalyzer queryAnalyzer,
+        IDomainQueryAnalyzer queryAnalyzer,
         BM25Index bm25Index,
         IMemoryCache cache,
         IMetricsCollector metrics,
@@ -45,13 +46,37 @@ public sealed class LegalRetrievalPipeline : IRetrievalPipeline
         _logger = logger;
     }
 
+    public Task<RetrievalResult> RetrieveAsync(
+        string query,
+        RetrievalConfig config,
+        string? caseNamespace = null,
+        CancellationToken ct = default)
+    {
+        return RetrieveAsync(query, config, caseNamespace, ct, null, null);
+    }
+
     public async Task<RetrievalResult> RetrieveAsync(
-        string query, RetrievalConfig config, string? caseNamespace = null, CancellationToken ct = default)
+        string query,
+        RetrievalConfig config,
+        string? caseNamespace,
+        CancellationToken ct,
+        string? domainId,
+        string? datasetScope)
     {
         var sw = Stopwatch.StartNew();
 
+        var domainFilter = NormalizeScopeValue(domainId);
+        var datasetFilter = NormalizeScopeValue(datasetScope);
+
+        if (string.IsNullOrWhiteSpace(domainFilter) || string.IsNullOrWhiteSpace(datasetFilter))
+        {
+            var (parsedDomainId, parsedDatasetScope) = ScopeNamespaceBuilder.Parse(caseNamespace);
+            domainFilter ??= parsedDomainId;
+            datasetFilter ??= parsedDatasetScope;
+        }
+
         // Check cache
-        var cacheKey = ComputeCacheKey(query, config, caseNamespace);
+        var cacheKey = ComputeCacheKey(query, config, caseNamespace, domainFilter, datasetFilter);
         if (_cache.TryGetValue<RetrievalResult>(cacheKey, out var cachedResult) && cachedResult is not null)
         {
             _metrics.IncrementCounter("cache_hit");
@@ -76,9 +101,28 @@ public sealed class LegalRetrievalPipeline : IRetrievalPipeline
         foreach (var variant in queryAnalysis.SemanticVariants)
         {
             var embedding = await _embedder.EmbedAsync(variant, ct);
-            var results = await _vectorStore.SearchAsync(
-                embedding, vectorTopK, config.SimilarityThreshold, caseNamespace, ct);
-            allChunks.AddRange(results);
+
+            var results = string.IsNullOrWhiteSpace(domainFilter)
+                && string.IsNullOrWhiteSpace(datasetFilter)
+                ? await _vectorStore.SearchAsync(
+                    embedding,
+                    vectorTopK,
+                    config.SimilarityThreshold,
+                    caseNamespace,
+                    ct)
+                : await _vectorStore.SearchAsync(
+                    embedding,
+                    vectorTopK,
+                    config.SimilarityThreshold,
+                    caseNamespace,
+                    ct,
+                    domainId: domainFilter,
+                    datasetScope: datasetFilter);
+
+            if (results is not null)
+            {
+                allChunks.AddRange(results);
+            }
         }
 
         // 2b: BM25 lexical search (if enabled)
@@ -217,11 +261,23 @@ public sealed class LegalRetrievalPipeline : IRetrievalPipeline
         return 1.0 / (1.0 + Math.Exp(-score));
     }
 
-    private static string ComputeCacheKey(string query, RetrievalConfig config, string? ns)
+    private static string ComputeCacheKey(
+        string query,
+        RetrievalConfig config,
+        string? ns,
+        string? domainId,
+        string? datasetScope)
     {
-        var raw = $"{query}|{config.TopK}|{config.StrictMode}|{ns ?? "default"}";
+        var raw = $"{query}|{config.TopK}|{config.StrictMode}|{ns ?? "default"}|{domainId ?? "*"}|{datasetScope ?? "*"}";
         var hash = System.Security.Cryptography.SHA256.HashData(
             System.Text.Encoding.UTF8.GetBytes(raw));
         return Convert.ToHexString(hash)[..24];
+    }
+
+    private static string? NormalizeScopeValue(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value)
+            ? null
+            : value.Trim().ToLowerInvariant();
     }
 }

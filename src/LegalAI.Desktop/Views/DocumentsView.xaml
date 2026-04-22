@@ -1,7 +1,7 @@
-<UserControl x:Class="LegalAI.Desktop.Views.DocumentsView"
+﻿<UserControl x:Class="LegalAI.Desktop.Views.DocumentsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             FlowDirection="RightToLeft"
+             FlowDirection="LeftToRight"
              FontFamily="{StaticResource ArabicFont}"
              Background="{StaticResource BackgroundBrush}"
              AllowDrop="True"
@@ -200,7 +200,7 @@
                           HeadersVisibility="Column"
                           CanUserSortColumns="True"
                           SelectionMode="Single"
-                          FlowDirection="RightToLeft">
+                          FlowDirection="LeftToRight">
 
                     <DataGrid.ColumnHeaderStyle>
                         <Style TargetType="DataGridColumnHeader">
@@ -213,16 +213,16 @@
                     </DataGrid.ColumnHeaderStyle>
 
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="اسم الملف"
+                        <DataGridTextColumn Header="File Name"
                                            Binding="{Binding FileName}"
                                            Width="*"/>
-                        <DataGridTextColumn Header="الحالة"
+                        <DataGridTextColumn Header="Status"
                                            Binding="{Binding StatusArabic}"
                                            Width="120"/>
-                        <DataGridTextColumn Header="نطاق القضية"
+                        <DataGridTextColumn Header="Case Namespace"
                                            Binding="{Binding CaseNamespace}"
                                            Width="120"/>
-                        <DataGridTextColumn Header="محاولات الفشل"
+                        <DataGridTextColumn Header="Failure Attempts"
                                            Binding="{Binding FailureCount}"
                                            Width="100"/>
                     </DataGrid.Columns>
@@ -231,3 +231,4 @@
         </Border>
     </Grid>
 </UserControl>
+

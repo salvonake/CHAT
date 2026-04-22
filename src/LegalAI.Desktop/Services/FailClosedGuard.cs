@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using LegalAI.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -109,30 +109,26 @@ public sealed class FailClosedGuard : IDisposable
         // ── Check 1: Model file exists ──
         if (!_modelIntegrity.LlmModelExists)
         {
-            reasons.Add("ملف النموذج غير موجود — لا يمكن توليد إجابات.\n" +
-                         "LLM model file not found — cannot generate answers.");
+            reasons.Add("LLM model file not found - cannot generate answers.");
             _logger.LogWarning("FailClosedGuard: LLM model file missing");
         }
 
         // ── Check 2: Model integrity (if hash is configured) ──
         if (_modelIntegrity.LlmModelExists && !_modelIntegrity.LlmModelValid)
         {
-            reasons.Add("فشل التحقق من سلامة النموذج — قد يكون الملف تالفاً أو معدّلاً.\n" +
-                         "Model integrity verification failed — file may be corrupted or tampered.");
+            reasons.Add("Model integrity verification failed - file may be corrupted or tampered.");
             _logger.LogError("FailClosedGuard: LLM model integrity check FAILED");
         }
 
         // ── Check 3: Embedding model ──
         if (!_modelIntegrity.EmbeddingModelExists)
         {
-            reasons.Add("نموذج التضمين غير موجود — لا يمكن البحث في الوثائق.\n" +
-                         "Embedding model not found — cannot search documents.");
+            reasons.Add("Embedding model not found - cannot search documents.");
             _logger.LogWarning("FailClosedGuard: Embedding model missing");
         }
         else if (!_modelIntegrity.EmbeddingModelValid)
         {
-            reasons.Add("فشل التحقق من سلامة نموذج التضمين.\n" +
-                         "Embedding model integrity check failed.");
+            reasons.Add("Embedding model integrity check failed.");
             _logger.LogError("FailClosedGuard: Embedding model integrity FAILED");
         }
 
@@ -142,15 +138,13 @@ public sealed class FailClosedGuard : IDisposable
             var llmAvailable = await _llm.IsAvailableAsync();
             if (!llmAvailable)
             {
-                reasons.Add("النموذج اللغوي غير متاح — لا يمكن توليد إجابات.\n" +
-                             "LLM service is not available — cannot generate answers.");
+                reasons.Add("LLM service is not available - cannot generate answers.");
                 _logger.LogWarning("FailClosedGuard: LLM not available");
             }
         }
         catch (Exception ex)
         {
-            reasons.Add($"خطأ في الاتصال بالنموذج اللغوي: {ex.Message}\n" +
-                         $"LLM connection error: {ex.Message}");
+            reasons.Add($"LLM connection error: {ex.Message}");
             _logger.LogError(ex, "FailClosedGuard: LLM availability check failed");
         }
 
@@ -160,15 +154,13 @@ public sealed class FailClosedGuard : IDisposable
             var health = await _vectorStore.GetHealthAsync();
             if (!health.IsHealthy)
             {
-                warns.Add("مخزن المتجهات في حالة غير سليمة — قد تكون نتائج البحث غير مكتملة.\n" +
-                           "Vector store unhealthy — search results may be incomplete.");
+                warns.Add("Vector store unhealthy - search results may be incomplete.");
                 _logger.LogWarning("FailClosedGuard: Vector store unhealthy: {Status}", health.Status);
             }
         }
         catch (Exception ex)
         {
-            reasons.Add($"خطأ في مخزن المتجهات: {ex.Message}\n" +
-                         $"Vector store error: {ex.Message}");
+            reasons.Add($"Vector store error: {ex.Message}");
             _logger.LogError(ex, "FailClosedGuard: Vector store health check failed");
         }
 
@@ -225,22 +217,19 @@ public sealed class FailClosedGuard : IDisposable
         // ── Rule 2: Must have citations ──
         if (citations == null || citations.Count < MinimumCitationCount)
         {
-            issues.Add("⚠ الإجابة لا تحتوي على استشهادات كافية من الوثائق المصدرية.\n" +
-                        "Answer lacks sufficient citations from source documents.");
+            issues.Add("⚠ Answer lacks sufficient citations from source documents.");
             severity = AnswerSeverity.Critical;
         }
 
         // ── Rule 3: Low confidence ──
         if (confidenceScore < MinimumConfidenceThreshold)
         {
-            issues.Add($"⚠ درجة الثقة منخفضة جداً ({confidenceScore:P0}). لا تعتمد على هذه الإجابة.\n" +
-                        $"Confidence score critically low ({confidenceScore:P0}). Do not rely on this answer.");
+            issues.Add($"⚠ Confidence score critically low ({confidenceScore:P0}). Do not rely on this answer.");
             severity = AnswerSeverity.Critical;
         }
         else if (confidenceScore < 0.60)
         {
-            issues.Add($"⚠ درجة الثقة أقل من المستوى الموصى به ({confidenceScore:P0}).\n" +
-                        $"Confidence below recommended level ({confidenceScore:P0}).");
+            issues.Add($"⚠ Confidence below recommended level ({confidenceScore:P0}).");
             if (severity < AnswerSeverity.Warning)
                 severity = AnswerSeverity.Warning;
         }
@@ -264,8 +253,7 @@ public sealed class FailClosedGuard : IDisposable
             if (lowerAnswer.Contains(pattern, StringComparison.OrdinalIgnoreCase) ||
                 answer.Contains(pattern))
             {
-                issues.Add("⚠ الإجابة تحتوي على مؤشرات استخدام معرفة خارجية. تحقق من المصادر.\n" +
-                            "Answer contains indicators of external knowledge usage. Verify sources.");
+                issues.Add("⚠ Answer contains indicators of external knowledge usage. Verify sources.");
                 severity = AnswerSeverity.Critical;
                 break;
             }
@@ -294,8 +282,7 @@ public sealed class FailClosedGuard : IDisposable
 
             if (unreferencedArticles.Count > 0)
             {
-                issues.Add($"⚠ مراجع غير موجودة في الاستشهادات: {string.Join(", ", unreferencedArticles)}\n" +
-                            $"References not found in citations: {string.Join(", ", unreferencedArticles)}");
+                issues.Add($"⚠ References not found in citations: {string.Join(", ", unreferencedArticles)}");
                 if (severity < AnswerSeverity.Warning)
                     severity = AnswerSeverity.Warning;
             }
@@ -364,3 +351,4 @@ public enum AnswerSeverity
     /// <summary>Answer has critical issues — user must be warned prominently.</summary>
     Critical = 2
 }
+
