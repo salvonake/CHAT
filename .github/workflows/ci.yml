@@ -1,4 +1,4 @@
-name: CI
+﻿name: CI
 
 on:
   push:
@@ -12,14 +12,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  repository-hygiene:
+    name: Repository Hygiene
+    runs-on: windows-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate repository consolidation policy
+        shell: pwsh
+        run: ./tests/scripts/Test-RepositoryHygiene.ps1
+
+      - name: Generate release baseline evidence
+        shell: pwsh
+        run: ./tests/scripts/New-ReleaseEvidence.ps1 -FailOnDirty
+
+      - name: Validate non-production signing policy
+        shell: pwsh
+        run: ./tests/scripts/Test-ReleaseSigningReadiness.ps1 -BuildProfile NonProduction -AllowUnsigned
+
   unit-tests:
     name: Unit Tests (Windows)
     runs-on: windows-latest
     timeout-minutes: 30
     env:
-      COVERAGE_MIN_BASE: ${{ vars.LEGALAI_UNIT_COVERAGE_MIN || '30' }}
-      STRICT_COVERAGE_ENABLED: ${{ vars.LEGALAI_CI_STRICT_COVERAGE || 'false' }}
-      STRICT_COVERAGE_MIN: ${{ vars.LEGALAI_CI_STRICT_COVERAGE_MIN || '70' }}
+      COVERAGE_MIN_BASE: ${{ vars.POSEIDON_UNIT_COVERAGE_MIN || '30' }}
+      STRICT_COVERAGE_ENABLED: ${{ vars.POSEIDON_CI_STRICT_COVERAGE || 'false' }}
+      STRICT_COVERAGE_MIN: ${{ vars.POSEIDON_CI_STRICT_COVERAGE_MIN || '70' }}
 
     steps:
       - name: Checkout
@@ -28,18 +49,18 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '8.0.419'
           cache: true
           cache-dependency-path: |
-            LegalAI.sln
+            Poseidon.sln
             src/**/*.csproj
             tests/**/*.csproj
 
       - name: Restore
-        run: dotnet restore LegalAI.sln
+        run: dotnet restore Poseidon.sln
 
       - name: Build unit tests
-        run: dotnet build tests/LegalAI.UnitTests/LegalAI.UnitTests.csproj --configuration Release
+        run: dotnet build tests/Poseidon.UnitTests/Poseidon.UnitTests.csproj --configuration Release
 
       - name: Clean unit TestResults
         shell: pwsh
@@ -50,7 +71,7 @@ jobs:
           New-Item -ItemType Directory -Path "TestResults" | Out-Null
 
       - name: Run unit tests
-        run: dotnet test tests/LegalAI.UnitTests/LegalAI.UnitTests.csproj --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --logger "trx;LogFileName=unit-tests.trx" --results-directory TestResults
+        run: dotnet test tests/Poseidon.UnitTests/Poseidon.UnitTests.csproj --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --logger "trx;LogFileName=unit-tests.trx" --results-directory TestResults
 
       - name: Resolve unit coverage policy
         shell: pwsh
@@ -133,7 +154,7 @@ jobs:
 
     services:
       qdrant:
-        image: qdrant/qdrant:latest
+        image: qdrant/qdrant:v1.15.4
         ports:
           - 6333:6333
           - 6334:6334
@@ -144,9 +165,9 @@ jobs:
           --health-retries=10
 
     env:
-      LEGALAI_RUN_INTEGRATION: "true"
-      LEGALAI_QDRANT_HOST: "127.0.0.1"
-      LEGALAI_QDRANT_PORT: "6334"
+      POSEIDON_RUN_INTEGRATION: "true"
+      POSEIDON_QDRANT_HOST: "127.0.0.1"
+      POSEIDON_QDRANT_PORT: "6334"
 
     steps:
       - name: Checkout
@@ -155,18 +176,18 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '8.0.419'
           cache: true
           cache-dependency-path: |
-            LegalAI.sln
+            Poseidon.sln
             src/**/*.csproj
             tests/**/*.csproj
 
       - name: Restore
-        run: dotnet restore tests/LegalAI.IntegrationTests/LegalAI.IntegrationTests.csproj
+        run: dotnet restore tests/Poseidon.IntegrationTests/Poseidon.IntegrationTests.csproj
 
       - name: Build integration tests
-        run: dotnet build tests/LegalAI.IntegrationTests/LegalAI.IntegrationTests.csproj --configuration Release
+        run: dotnet build tests/Poseidon.IntegrationTests/Poseidon.IntegrationTests.csproj --configuration Release
 
       - name: Clean integration TestResults (Qdrant)
         shell: pwsh
@@ -177,7 +198,7 @@ jobs:
           New-Item -ItemType Directory -Path "TestResults" | Out-Null
 
       - name: Run integration tests (Qdrant)
-        run: dotnet test tests/LegalAI.IntegrationTests/LegalAI.IntegrationTests.csproj --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=integration-qdrant.trx" --results-directory TestResults
+        run: dotnet test tests/Poseidon.IntegrationTests/Poseidon.IntegrationTests.csproj --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=integration-qdrant.trx" --results-directory TestResults
 
       - name: Qdrant integration summary
         if: ${{ always() }}
@@ -196,10 +217,10 @@ jobs:
     name: Integration Tests (ONNX)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: ${{ secrets.LEGALAI_ONNX_MODEL_URL != '' }}
+    if: ${{ secrets.POSEIDON_ONNX_MODEL_URL != '' }}
 
     env:
-      LEGALAI_RUN_INTEGRATION: "true"
+      POSEIDON_RUN_INTEGRATION: "true"
 
     steps:
       - name: Checkout
@@ -208,23 +229,23 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: '8.0.419'
           cache: true
           cache-dependency-path: |
-            LegalAI.sln
+            Poseidon.sln
             src/**/*.csproj
             tests/**/*.csproj
 
       - name: Download ONNX model artifact
         run: |
           mkdir -p .artifacts
-          curl -L "${{ secrets.LEGALAI_ONNX_MODEL_URL }}" -o .artifacts/model.onnx
+          curl -L "${{ secrets.POSEIDON_ONNX_MODEL_URL }}" -o .artifacts/model.onnx
 
       - name: Restore
-        run: dotnet restore tests/LegalAI.IntegrationTests/LegalAI.IntegrationTests.csproj
+        run: dotnet restore tests/Poseidon.IntegrationTests/Poseidon.IntegrationTests.csproj
 
       - name: Build integration tests
-        run: dotnet build tests/LegalAI.IntegrationTests/LegalAI.IntegrationTests.csproj --configuration Release
+        run: dotnet build tests/Poseidon.IntegrationTests/Poseidon.IntegrationTests.csproj --configuration Release
 
       - name: Clean integration TestResults (ONNX)
         shell: pwsh
@@ -236,8 +257,8 @@ jobs:
 
       - name: Run integration tests (ONNX)
         env:
-          LEGALAI_ONNX_MODEL_PATH: ${{ github.workspace }}/.artifacts/model.onnx
-        run: dotnet test tests/LegalAI.IntegrationTests/LegalAI.IntegrationTests.csproj --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=integration-onnx.trx" --results-directory TestResults
+          POSEIDON_ONNX_MODEL_PATH: ${{ github.workspace }}/.artifacts/model.onnx
+        run: dotnet test tests/Poseidon.IntegrationTests/Poseidon.IntegrationTests.csproj --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=integration-onnx.trx" --results-directory TestResults
 
       - name: ONNX integration summary
         if: ${{ always() }}
@@ -252,37 +273,197 @@ jobs:
           path: TestResults/**/*.trx
           if-no-files-found: warn
 
+  installer-validation:
+    name: Installer Validation (WiX/Burn)
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.419'
+          cache: true
+          cache-dependency-path: |
+            Poseidon.sln
+            src/**/*.csproj
+            tests/**/*.csproj
+            installer/*.wixproj
+
+      - name: Create CI model fixtures
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path ".artifacts/installer-models" | Out-Null
+          Set-Content -Path ".artifacts/installer-models/qwen2.5-14b.Q5_K_M.gguf" -Value "ci-llm-model" -Encoding ASCII
+          Set-Content -Path ".artifacts/installer-models/arabert.onnx" -Value "ci-embedding-model" -Encoding ASCII
+
+      - name: Build WiX/Burn installer
+        shell: pwsh
+        run: ./installer/build-installer.ps1 -ModelsPath ".artifacts/installer-models" -BuildProfile NonProduction -AllowTestModels -UnsignedDevelopmentBuild
+
+      - name: Validate installer artifacts
+        shell: pwsh
+        run: ./installer/Validate-InstallerArtifacts.ps1 -BuildProfile NonProduction -AllowTestModels -AllowUnsigned
+
+      - name: Run provisioning-check gate
+        shell: pwsh
+        run: |
+          $check = "publish/provisioning-check/win-x64/provisioning-check.exe"
+          & $check --config "installer/generated/appsettings.user.json" --manifest "installer/generated/model-manifest.json" --install-dir "installer/generated/staged-install" --mode full --log "installer/generated/provisioning-check-ci.log"
+          if ($LASTEXITCODE -ne 0) { throw "provisioning-check CI gate failed" }
+
+      - name: Validate secret storage compliance metadata
+        shell: pwsh
+        run: |
+          $provenance = Get-Content -Raw "installer/output/build-provenance.json" | ConvertFrom-Json
+          if (-not $provenance.secretStorage -or $provenance.secretStorage.provider -ne "dpapi") {
+            throw "Build provenance is missing DPAPI secret-storage compliance metadata."
+          }
+          $config = Get-Content -Raw "installer/generated/appsettings.user.json" | ConvertFrom-Json
+          if ($config.Instance.BuildProfile -eq "Production") {
+            if (-not $config.Security.EncryptionPassphraseRef) {
+              throw "Production config must use Security:EncryptionPassphraseRef."
+            }
+            if (-not [string]::IsNullOrWhiteSpace([string]$config.Security.EncryptionPassphrase)) {
+              throw "Production config contains plaintext encryption passphrase."
+            }
+          }
+
+      - name: Run manifest tamper gate
+        shell: pwsh
+        run: |
+          $tamper = "installer/generated/model-manifest-tampered.json"
+          Copy-Item "installer/generated/model-manifest.json" $tamper -Force
+          $json = Get-Content -Raw $tamper | ConvertFrom-Json
+          $json.models[0].sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+          $json | ConvertTo-Json -Depth 8 | Set-Content -Path $tamper -Encoding UTF8
+          $check = "publish/provisioning-check/win-x64/provisioning-check.exe"
+          & $check --config "installer/generated/appsettings.user.json" --manifest $tamper --install-dir "installer/generated/staged-install" --mode full --log "installer/generated/provisioning-check-tamper.log"
+          if ($LASTEXITCODE -eq 0) { throw "provisioning-check accepted a tampered manifest" }
+
+      - name: Run Burn upgrade smoke
+        if: ${{ vars.POSEIDON_PREVIOUS_BUNDLE_URL != '' }}
+        shell: pwsh
+        run: |
+          $previous = Join-Path $env:RUNNER_TEMP "Poseidon.Previous.Bundle.exe"
+          Invoke-WebRequest -Uri "${{ vars.POSEIDON_PREVIOUS_BUNDLE_URL }}" -OutFile $previous
+          $previousInstallLog = Join-Path $env:RUNNER_TEMP "poseidon-previous-burn-install.log"
+          $previousInstall = Start-Process -FilePath $previous -ArgumentList @("/quiet", "/norestart", "/log", $previousInstallLog) -Wait -PassThru
+          if ($previousInstall.ExitCode -ne 0) { throw "Previous Burn install failed with exit code $($previousInstall.ExitCode). See $previousInstallLog" }
+
+          $current = (Resolve-Path "installer/output/Poseidon.Bundle.exe").Path
+          $upgradeLog = Join-Path $env:RUNNER_TEMP "poseidon-burn-upgrade.log"
+          $upgrade = Start-Process -FilePath $current -ArgumentList @("/quiet", "/norestart", "/log", $upgradeLog) -Wait -PassThru
+          if ($upgrade.ExitCode -ne 0) { throw "Burn upgrade failed with exit code $($upgrade.ExitCode). See $upgradeLog" }
+
+          $uninstallLog = Join-Path $env:RUNNER_TEMP "poseidon-burn-upgrade-uninstall.log"
+          $uninstall = Start-Process -FilePath $current -ArgumentList @("/uninstall", "/quiet", "/norestart", "/log", $uninstallLog) -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "Post-upgrade Burn uninstall failed with exit code $($uninstall.ExitCode). See $uninstallLog" }
+
+      - name: Run MSI silent install smoke
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP "poseidon-msi-install.log"
+          $args = @(
+            "/i", (Resolve-Path "installer/output/Poseidon.Installer.msi").Path,
+            "/qn",
+            "/norestart",
+            "/L*v", $log
+          )
+          $process = Start-Process -FilePath "msiexec.exe" -ArgumentList $args -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Silent MSI install failed with exit code $($process.ExitCode). See $log" }
+          $repairArgs = @(
+            "/fa", (Resolve-Path "installer/output/Poseidon.Installer.msi").Path,
+            "/qn",
+            "/norestart",
+            "/L*v", (Join-Path $env:RUNNER_TEMP "poseidon-msi-repair.log")
+          )
+          $repair = Start-Process -FilePath "msiexec.exe" -ArgumentList $repairArgs -Wait -PassThru
+          if ($repair.ExitCode -ne 0) { throw "Silent MSI repair failed with exit code $($repair.ExitCode)." }
+          $uninstallArgs = @(
+            "/x", (Resolve-Path "installer/output/Poseidon.Installer.msi").Path,
+            "/qn",
+            "/norestart",
+            "/L*v", (Join-Path $env:RUNNER_TEMP "poseidon-msi-uninstall.log")
+          )
+          $uninstall = Start-Process -FilePath "msiexec.exe" -ArgumentList $uninstallArgs -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "Silent MSI uninstall failed with exit code $($uninstall.ExitCode)." }
+
+      - name: Run Burn silent smoke
+        shell: pwsh
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP "poseidon-burn-install.log"
+          $bundle = (Resolve-Path "installer/output/Poseidon.Bundle.exe").Path
+          $process = Start-Process -FilePath $bundle -ArgumentList @("/quiet", "/norestart", "/log", $log) -Wait -PassThru
+          if ($process.ExitCode -ne 0) { throw "Silent Burn install failed with exit code $($process.ExitCode). See $log" }
+          $repairLog = Join-Path $env:RUNNER_TEMP "poseidon-burn-repair.log"
+          $repair = Start-Process -FilePath $bundle -ArgumentList @("/repair", "/quiet", "/norestart", "/log", $repairLog) -Wait -PassThru
+          if ($repair.ExitCode -ne 0) { throw "Silent Burn repair failed with exit code $($repair.ExitCode). See $repairLog" }
+          $uninstallLog = Join-Path $env:RUNNER_TEMP "poseidon-burn-uninstall.log"
+          $uninstall = Start-Process -FilePath $bundle -ArgumentList @("/uninstall", "/quiet", "/norestart", "/log", $uninstallLog) -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "Silent Burn uninstall failed with exit code $($uninstall.ExitCode). See $uninstallLog" }
+
+      - name: Upload installer artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: poseidon-installer-artifacts
+          path: |
+            installer/output/Poseidon.Installer.msi
+            installer/output/Poseidon.Bundle.exe
+            installer/output/model-manifest.json
+            installer/output/build-provenance.json
+            installer/output/prerequisite-validation.json
+            installer/output/signing-report.json
+            installer/generated/provisioning-check-ci.log
+            installer/generated/provisioning-check-tamper.log
+          if-no-files-found: error
+
   readiness-gate:
     name: Readiness Gate
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: [unit-tests, integration-qdrant, integration-onnx]
+    needs: [repository-hygiene, unit-tests, integration-qdrant, integration-onnx, installer-validation]
     if: ${{ always() }}
 
     steps:
       - name: Evaluate readiness status
         shell: bash
         run: |
+          hygiene_result="${{ needs.repository-hygiene.result }}"
           unit_result="${{ needs.unit-tests.result }}"
           qdrant_result="${{ needs.integration-qdrant.result }}"
           onnx_result="${{ needs.integration-onnx.result }}"
+          installer_result="${{ needs.installer-validation.result }}"
 
           echo "### Readiness Gate" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Job | Result |" >> "$GITHUB_STEP_SUMMARY"
           echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Repository Hygiene | $hygiene_result |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Unit Tests | $unit_result |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Integration Tests (Qdrant) | $qdrant_result |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Integration Tests (ONNX) | $onnx_result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Installer Validation | $installer_result |" >> "$GITHUB_STEP_SUMMARY"
 
           overall_result="PASSED"
-          if [[ "$unit_result" != "success" || "$qdrant_result" != "success" ]]; then
+          if [[ "$hygiene_result" != "success" || "$unit_result" != "success" || "$qdrant_result" != "success" ]]; then
             overall_result="FAILED"
           fi
           if [[ "$onnx_result" != "success" && "$onnx_result" != "skipped" ]]; then
             overall_result="FAILED"
           fi
+          if [[ "$installer_result" != "success" ]]; then
+            overall_result="FAILED"
+          fi
           echo "| Overall | $overall_result |" >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$hygiene_result" != "success" ]]; then
+            echo "Repository hygiene failed or was cancelled." >&2
+            exit 1
+          fi
 
           if [[ "$unit_result" != "success" ]]; then
             echo "Unit tests failed or were cancelled." >&2
@@ -298,3 +479,10 @@ jobs:
             echo "ONNX integration tests failed or were cancelled." >&2
             exit 1
           fi
+
+          if [[ "$installer_result" != "success" ]]; then
+            echo "Installer validation failed or was cancelled." >&2
+            exit 1
+          fi
+
+

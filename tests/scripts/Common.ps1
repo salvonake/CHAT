@@ -1,4 +1,4 @@
-function Assert-DotNetSdkAvailable {
+﻿function Assert-DotNetSdkAvailable {
     $localDotnetDir = Join-Path $env:LOCALAPPDATA "Microsoft\dotnet"
     $localDotnetExe = Join-Path $localDotnetDir "dotnet.exe"
 
@@ -79,7 +79,7 @@ function Resolve-UnitCoverageMin {
         return $Current
     }
 
-    $configured = $env:LEGALAI_UNIT_COVERAGE_MIN
+    $configured = $env:POSEIDON_UNIT_COVERAGE_MIN
     if ([string]::IsNullOrWhiteSpace($configured)) {
         return $Current
     }
@@ -93,7 +93,7 @@ function Resolve-UnitCoverageMin {
         return $value
     }
 
-    Write-Warning "Ignoring invalid LEGALAI_UNIT_COVERAGE_MIN value '$configured'. Using $Current."
+    Write-Warning "Ignoring invalid POSEIDON_UNIT_COVERAGE_MIN value '$configured'. Using $Current."
     return $Current
 }
 
@@ -131,3 +131,4 @@ function Get-CoberturaCoverageSummary {
         CoveragePercent = $percent
     }
 }
+

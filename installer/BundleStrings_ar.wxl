@@ -3,10 +3,10 @@
                  Culture="ar"
                  Language="1025"
                  Codepage="1256">
-  <String Id="Caption" Value="LegalAI Enterprise Setup"/>
-  <String Id="Title" Value="LegalAI Enterprise"/>
-  <String Id="InstallHeader" Value="تثبيت LegalAI Enterprise"/>
-  <String Id="InstallMessage" Value="سيتم تثبيت منصة LegalAI Enterprise للدعم القانوني المقيد بالأدلة على جهازك."/>
+  <String Id="Caption" Value="تثبيت Poseidon Desktop"/>
+  <String Id="Title" Value="Poseidon Desktop"/>
+  <String Id="InstallHeader" Value="تثبيت Poseidon Desktop"/>
+  <String Id="InstallMessage" Value="سيتم تثبيت Poseidon Desktop على جهازك."/>
   <String Id="InstallVersion" Value="الإصدار [WixBundleVersion]"/>
   <String Id="ConfirmCancelMessage" Value="هل أنت متأكد من إلغاء التثبيت؟"/>
   <String Id="ExecuteUpgradeRelatedBundle" Value="الإصدار السابق"/>

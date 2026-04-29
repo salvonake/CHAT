@@ -1,4 +1,4 @@
-param(
+﻿param(
     [switch]$Release,
     [switch]$NoBuild,
     [string]$Filter = "",
@@ -18,7 +18,7 @@ try {
     $CoverageMin = Resolve-UnitCoverageMin -Current $CoverageMin -BoundParameters $PSBoundParameters
 
     $configuration = if ($Release) { "Release" } else { "Debug" }
-    $unitAssemblyPath = "tests/LegalAI.UnitTests/bin/$configuration/net8.0-windows/LegalAI.UnitTests.dll"
+    $unitAssemblyPath = "tests/Poseidon.UnitTests/bin/$configuration/net8.0-windows/Poseidon.UnitTests.dll"
 
     Remove-StaleTestResultFiles -Patterns @("unit-local.trx", "coverage.cobertura.xml")
 
@@ -27,7 +27,7 @@ try {
     }
 
     if (-not $NoBuild) {
-        dotnet build tests/LegalAI.UnitTests/LegalAI.UnitTests.csproj --configuration $configuration
+        dotnet build tests/Poseidon.UnitTests/Poseidon.UnitTests.csproj --configuration $configuration
         if ($LASTEXITCODE -ne 0) {
             throw "dotnet build failed with exit code $LASTEXITCODE"
         }
@@ -35,7 +35,7 @@ try {
 
     $testArgs = @(
         "test",
-        "tests/LegalAI.UnitTests/LegalAI.UnitTests.csproj",
+        "tests/Poseidon.UnitTests/Poseidon.UnitTests.csproj",
         "--no-build",
         "--configuration", $configuration,
         "--verbosity", "normal",
@@ -105,3 +105,4 @@ try {
 finally {
     Pop-Location
 }
+

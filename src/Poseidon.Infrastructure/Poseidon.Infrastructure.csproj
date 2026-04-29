@@ -1,0 +1,28 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Poseidon.Domain\Poseidon.Domain.csproj" />
+    <ProjectReference Include="..\Poseidon.Application\Poseidon.Application.csproj" />
+    <ProjectReference Include="..\Poseidon.Ingestion\Poseidon.Ingestion.csproj" />
+    <ProjectReference Include="..\Poseidon.Retrieval\Poseidon.Retrieval.csproj" />
+    <ProjectReference Include="..\Poseidon.Security\Poseidon.Security.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="LLamaSharp" Version="0.19.0" />
+    <PackageReference Include="LLamaSharp.Backend.Cuda12" Version="0.19.0" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.3" />
+    <PackageReference Include="Qdrant.Client" Version="1.17.0" />
+    <PackageReference Include="System.Text.Json" Version="10.0.3" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>
+

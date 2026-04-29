@@ -1,0 +1,228 @@
+<UserControl x:Class="Poseidon.Desktop.Views.DiagnosticView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             FlowDirection="LeftToRight"
+             Background="{StaticResource BackgroundBrush}">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                Background="{StaticResource SurfaceBrush}"
+                BorderBrush="{StaticResource BorderBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="16">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Left">
+                    <TextBlock Text="Diagnostic et recuperation"
+                               Style="{StaticResource SectionHeader}"
+                               Margin="0,0,0,4"/>
+                    <TextBlock Text="{Binding ModeText}"
+                               Style="{StaticResource BodyText}"
+                               FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding StatusMessage}"
+                               Style="{StaticResource SecondaryText}"
+                               Margin="0,4,0,0"/>
+                </StackPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button Content="Actualiser"
+                            Style="{StaticResource SecondaryButton}"
+                            Command="{Binding RefreshCommand}"
+                            Margin="0,0,8,0"/>
+                    <Button Content="Ouvrir les journaux"
+                            Style="{StaticResource SecondaryButton}"
+                            Command="{Binding OpenLogsFolderCommand}"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <Grid Grid.Row="1" Margin="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.2*"/>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Groups}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Name}"
+                                               Style="{StaticResource SectionHeader}"
+                                               FontSize="15"/>
+                                    <ItemsControl ItemsSource="{Binding Issues}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border BorderBrush="{StaticResource BorderBrush}"
+                                                        BorderThickness="0,0,0,1"
+                                                        Padding="0,10">
+                                                    <StackPanel>
+                                                        <DockPanel>
+                                                            <Border DockPanel.Dock="Left"
+                                                                    Width="8"
+                                                                    Margin="0,0,10,0"
+                                                                    Background="{Binding StatusBrush}"/>
+                                                            <StackPanel>
+                                                                <TextBlock Text="{Binding Component}"
+                                                                           Style="{StaticResource BodyText}"
+                                                                           FontWeight="Bold"/>
+                                                                <TextBlock Text="{Binding Message}"
+                                                                           Style="{StaticResource SecondaryText}"
+                                                                           TextWrapping="Wrap"/>
+                                                            </StackPanel>
+                                                        </DockPanel>
+
+                                                        <TextBox Text="{Binding EditValue, UpdateSourceTrigger=PropertyChanged}"
+                                                                 Style="{StaticResource ArabicTextBox}"
+                                                                 FontSize="12"
+                                                                 IsEnabled="{Binding IsEditEnabled}"
+                                                                 Margin="18,8,0,0"
+                                                                 Visibility="{Binding IsEditable, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                                                        <PasswordBox Margin="18,8,0,0"
+                                                                     Padding="10"
+                                                                     IsEnabled="{Binding CanRunFix}"
+                                                                     PasswordChanged="OnSecretPasswordChanged"
+                                                                     Tag="{Binding}"
+                                                                     Visibility="{Binding RequiresSecret, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                                                        <TextBlock Text="{Binding BusyReason}"
+                                                                   Style="{StaticResource SecondaryText}"
+                                                                   Margin="18,6,0,0"
+                                                                   Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibilityConverter}}"/>
+
+                                                        <TextBlock Text="{Binding ValidationError}"
+                                                                   Foreground="{StaticResource DangerBrush}"
+                                                                   Style="{StaticResource SecondaryText}"
+                                                                   Margin="18,6,0,0"/>
+
+                                                        <ItemsControl ItemsSource="{Binding Details}" Margin="18,8,0,0">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <DockPanel>
+                                                                        <TextBlock Text="{Binding Key}"
+                                                                                   Style="{StaticResource SecondaryText}"
+                                                                                   FontWeight="SemiBold"
+                                                                                   Width="110"/>
+                                                                        <TextBlock Text="{Binding Value}"
+                                                                                   Style="{StaticResource SecondaryText}"
+                                                                                   FontFamily="{StaticResource MonoFont}"
+                                                                                   TextWrapping="Wrap"/>
+                                                                    </DockPanel>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+
+                                                        <StackPanel Orientation="Horizontal"
+                                                                    Margin="18,10,0,0">
+                                                            <Button Content="Fix"
+                                                                    Style="{StaticResource SecondaryButton}"
+                                                                    Command="{Binding DataContext.FixCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    IsEnabled="{Binding CanRunFix}"
+                                                                    Margin="0,0,8,0"/>
+                                                            <Button Content="Retry"
+                                                                    Style="{StaticResource SecondaryButton}"
+                                                                    Command="{Binding DataContext.RetryCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                    CommandParameter="{Binding}"
+                                                                    IsEnabled="{Binding CanRunRetry}"
+                                                                    Margin="0,0,8,0"/>
+                                                            <Button Content="View Logs"
+                                                                    Style="{StaticResource SecondaryButton}"
+                                                                    Command="{Binding DataContext.ViewLogsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                    CommandParameter="{Binding}"/>
+                                                        </StackPanel>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <Border Grid.Column="2" Style="{StaticResource Card}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0">
+                        <TextBlock Text="Journaux en direct"
+                                   Style="{StaticResource SectionHeader}"
+                                   FontSize="15"/>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="130"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <ComboBox SelectedValue="{Binding SelectedLogLevel}"
+                                      SelectedValuePath="Content"
+                                      Background="{StaticResource SurfaceLightBrush}"
+                                      Foreground="{StaticResource TextPrimaryBrush}">
+                                <ComboBoxItem Content="Information"/>
+                                <ComboBoxItem Content="Warning"/>
+                                <ComboBoxItem Content="Error"/>
+                                <ComboBoxItem Content="Debug"/>
+                            </ComboBox>
+                            <TextBox Grid.Column="1"
+                                     Text="{Binding LogSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource ArabicTextBox}"
+                                     FontSize="12"
+                                     Margin="8,0"
+                                     ToolTip="Recherche"/>
+                            <Button Grid.Column="2"
+                                    Content="Effacer"
+                                    Style="{StaticResource SecondaryButton}"
+                                    Command="{Binding ClearLogViewCommand}"/>
+                        </Grid>
+                    </StackPanel>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Logs}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{StaticResource BorderBrush}"
+                                            BorderThickness="0,0,0,1"
+                                            Padding="0,6">
+                                        <StackPanel>
+                                            <DockPanel>
+                                                <TextBlock Text="{Binding Timestamp}"
+                                                           Style="{StaticResource SecondaryText}"
+                                                           FontFamily="{StaticResource MonoFont}"
+                                                           Width="70"/>
+                                                <TextBlock Text="{Binding Level}"
+                                                           Foreground="{Binding LevelBrush}"
+                                                           FontFamily="{StaticResource MonoFont}"
+                                                           Width="80"/>
+                                                <TextBlock Text="{Binding Component}"
+                                                           Style="{StaticResource SecondaryText}"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                            </DockPanel>
+                                            <TextBlock Text="{Binding Message}"
+                                                       Style="{StaticResource BodyText}"
+                                                       FontSize="12"/>
+                                            <TextBlock Text="{Binding Exception}"
+                                                       Style="{StaticResource SecondaryText}"
+                                                       FontFamily="{StaticResource MonoFont}"
+                                                       TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

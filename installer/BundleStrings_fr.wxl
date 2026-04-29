@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<WixLocalization xmlns="http://wixtoolset.org/schemas/v4/wxl"
+                 Culture="fr-fr"
+                 Language="1036"
+                 Codepage="1252">
+  <String Id="Caption" Value="Installation Poseidon Desktop"/>
+  <String Id="Title" Value="Poseidon Desktop"/>
+  <String Id="InstallHeader" Value="Installer Poseidon Desktop"/>
+  <String Id="InstallMessage" Value="Le programme d'installation va installer Poseidon Desktop sur cet ordinateur."/>
+  <String Id="InstallVersion" Value="Version [WixBundleVersion]"/>
+  <String Id="ConfirmCancelMessage" Value="Voulez-vous vraiment annuler l'installation ?"/>
+  <String Id="ExecuteUpgradeRelatedBundle" Value="Version precedente"/>
+  <String Id="SuccessHeader" Value="Installation terminee"/>
+  <String Id="SuccessInstallHeader" Value="Installation terminee avec succes"/>
+  <String Id="SuccessRepairHeader" Value="Reparation terminee avec succes"/>
+  <String Id="SuccessUninstallHeader" Value="Desinstallation terminee avec succes"/>
+  <String Id="FailureHeader" Value="Echec de l'installation"/>
+  <String Id="FailureInstallHeader" Value="L'installation a echoue. Veuillez reessayer."/>
+  <String Id="FailureRepairHeader" Value="La reparation a echoue."/>
+  <String Id="FailureUninstallHeader" Value="La desinstallation a echoue."/>
+  <String Id="ProgressHeader" Value="Installation en cours..."/>
+  <String Id="OverallProgressPackageText" Value="Preparation : [1]"/>
+  <String Id="FilesInUseTitle" Value="Fichiers en cours d'utilisation"/>
+  <String Id="FilesInUseLabel" Value="Les applications suivantes utilisent des fichiers que l'installation doit mettre a jour. Fermez-les puis reessayez."/>
+  <String Id="InstallAcceptCheckbox" Value="J'accepte les conditions d'utilisation"/>
+  <String Id="InstallOptionsButton" Value="Options"/>
+  <String Id="InstallInstallButton" Value="Installer"/>
+  <String Id="InstallCloseButton" Value="Fermer"/>
+  <String Id="SuccessRestartButton" Value="Redemarrer"/>
+  <String Id="SuccessCloseButton" Value="Fermer"/>
+  <String Id="SuccessLaunchButton" Value="Lancer Poseidon Desktop"/>
+  <String Id="ModifyButton" Value="Modifier"/>
+  <String Id="RepairButton" Value="Reparer"/>
+  <String Id="UninstallButton" Value="Desinstaller"/>
+</WixLocalization>

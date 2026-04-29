@@ -1,0 +1,7 @@
+﻿@Poseidon.Api_HostAddress = http://localhost:5018
+
+GET {{Poseidon.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
+

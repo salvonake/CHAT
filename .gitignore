@@ -2,6 +2,11 @@
 bin/
 obj/
 publish/
+**/bin/
+**/obj/
+**/publish/
+.artifacts/
+artifacts/
 
 ## IDE
 .vs/
@@ -16,35 +21,62 @@ packages/
 *.nupkg
 project.lock.json
 project.fragment.lock.json
-artifacts/
+*.snupkg
 
 ## Runtime data
 *.db
 *.db-journal
 *.db-shm
 *.db-wal
+*.sqlite
+*.sqlite3
 
 ## Ollama models (pulled separately)
 models/
+**/models/
 
 ## ONNX models (large binaries)
 *.onnx
+*.gguf
+*.safetensors
+*.bin
 
 ## Encryption keys
 *.key
 *.pem
+*.pfx
+*.p12
 
 ## Logs
 logs/
 *.log
+*_log.txt
+*_diag.txt
+test_results.txt
+test_detail.txt
 
 ## Installer artifacts
 installer/output/
 installer/prereqs/
+installer/generated/
+installer/obj/
+installer/*.msi
+installer/*.exe
+installer/**/*.wixpdb
+installer/**/*.cab
+installer/**/*.msix
+installer/**/*.appx
+installer/**/signing-report.json
+installer/**/build-provenance.json
+installer/**/model-manifest*.json
+installer/**/prerequisite-validation.json
 
 ## Test outputs
 TestResults/
+**/TestResults/
 *.trx
+*.coverage
+coverage.cobertura.xml
 
 ## PDF staging
 pdfs/
@@ -62,3 +94,13 @@ Desktop.ini
 .env
 .env.*
 !.env.example
+
+## QA and local diagnostics
+deploy/qa/evidence/
+startup.log
+poseidon-*.log
+poseidon-errors-*.log
+
+## Local generated config
+appsettings.user.json
+*.user.json

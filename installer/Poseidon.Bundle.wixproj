@@ -1,0 +1,42 @@
+﻿<Project Sdk="WixToolset.Sdk/5.0.0">
+
+  <PropertyGroup>
+    <!--
+      Burn Bundle â€” produces a self-extracting .exe installer
+      that wraps the MSI Package + prerequisites.
+    -->
+    <OutputType>Bundle</OutputType>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <NuGetPackageRoot Condition="'$(NuGetPackageRoot)' == ''">$(UserProfile)\.nuget\packages\</NuGetPackageRoot>
+
+    <DefineConstants>
+      ProductName=Ù†Ø¸Ø§Ù… Ø§Ù„Ø°ÙƒØ§Ø¡ Ø§Ù„Ù‚Ø§Ù†ÙˆÙ†ÙŠ;
+      ProductNameEn=Poseidon Desktop;
+      Manufacturer=Poseidon;
+      BundleUpgradeCode=8B4C2F0A-5D3E-49B7-A6F1-2E7F9B3D4F0C
+    </DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Bundle.wxs" />
+    <EmbeddedResource Include="BundleStrings_fr.wxl" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.Bal.wixext" Version="5.0.0" />
+    <PackageReference Include="WixToolset.Util.wixext" Version="5.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <WixExtension Include="$(NuGetPackageRoot)\wixtoolset.bal.wixext\5.0.0\wixext5\WixToolset.BootstrapperApplications.wixext.dll" />
+    <WixExtension Include="$(NuGetPackageRoot)\wixtoolset.util.wixext\5.0.0\wixext5\WixToolset.Util.wixext.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Reference the MSI Package project -->
+    <ProjectReference Include="Poseidon.Installer.wixproj"/>
+  </ItemGroup>
+
+</Project>
+

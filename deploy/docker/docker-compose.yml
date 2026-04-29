@@ -1,10 +1,10 @@
-# LegalAI Infrastructure Stack
+﻿# Poseidon Infrastructure Stack
 # Qdrant vector database for local operation
 
 services:
   qdrant:
-    image: qdrant/qdrant:latest
-    container_name: legalai-qdrant
+    image: qdrant/qdrant:v1.15.4
+    container_name: poseidon-qdrant
     ports:
       - "6333:6333"   # REST API
       - "6334:6334"   # gRPC (used by .NET client)
@@ -22,3 +22,4 @@ services:
 volumes:
   qdrant_data:
     driver: local
+

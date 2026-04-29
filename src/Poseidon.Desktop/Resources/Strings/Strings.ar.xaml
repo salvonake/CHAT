@@ -1,0 +1,126 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=mscorlib">
+
+    <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+         Arabic UI Strings â€” Poseidon
+         â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+
+    <!-- App -->
+    <system:String x:Key="AppTitle">Ù†Ø¸Ø§Ù… Ø§Ù„Ø°ÙƒØ§Ø¡ Ø§Ù„Ù‚Ø§Ù†ÙˆÙ†ÙŠ</system:String>
+    <system:String x:Key="AppSubtitle">Ù…Ø­Ø±Ùƒ Ø§Ù„Ù…Ø¹Ø±ÙØ© Ø§Ù„Ù‚Ø§Ù†ÙˆÙ†ÙŠØ© Ø§Ù„Ù…Ù‚ÙŠØ¯ Ø¨Ø§Ù„Ø£Ø¯Ù„Ø©</system:String>
+
+    <!-- Navigation -->
+    <system:String x:Key="NavAsk">ðŸ“‹ Ø§Ø³ØªØ¹Ù„Ø§Ù… Ù‚Ø§Ù†ÙˆÙ†ÙŠ</system:String>
+    <system:String x:Key="NavChat">ðŸ’¬ Ø§Ù„Ù…Ø­Ø§Ø¯Ø«Ø©</system:String>
+    <system:String x:Key="NavDocuments">ðŸ“ Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„ÙˆØ«Ø§Ø¦Ù‚</system:String>
+    <system:String x:Key="NavSettings">âš™ Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª</system:String>
+    <system:String x:Key="NavHealth">ðŸ’Š Ø­Ø§Ù„Ø© Ø§Ù„Ù†Ø¸Ø§Ù…</system:String>
+
+    <!-- Ask View -->
+    <system:String x:Key="AskPlaceholder">Ø§ÙƒØªØ¨ Ø³Ø¤Ø§Ù„Ùƒ Ø§Ù„Ù‚Ø§Ù†ÙˆÙ†ÙŠ Ù‡Ù†Ø§...</system:String>
+    <system:String x:Key="AskButton">Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„Ø§Ø³ØªØ¹Ù„Ø§Ù…</system:String>
+    <system:String x:Key="AskClear">Ù…Ø³Ø­</system:String>
+    <system:String x:Key="AskStrictMode">Ø§Ù„ÙˆØ¶Ø¹ Ø§Ù„ØµØ§Ø±Ù…</system:String>
+    <system:String x:Key="AskCaseNamespace">Ù†Ø·Ø§Ù‚ Ø§Ù„Ù‚Ø¶ÙŠØ©</system:String>
+    <system:String x:Key="AskCitations">Ø§Ù„Ø§Ø³ØªØ´Ù‡Ø§Ø¯Ø§Øª</system:String>
+    <system:String x:Key="AskConfidence">Ù…Ø³ØªÙˆÙ‰ Ø§Ù„Ø«Ù‚Ø©</system:String>
+    <system:String x:Key="AskAbstention">Ø§Ù…ØªÙ†Ø§Ø¹ Ø¹Ù† Ø§Ù„Ø¥Ø¬Ø§Ø¨Ø©</system:String>
+    <system:String x:Key="AskAbstentionMsg">Ù„Ù… ÙŠØªÙ… Ø§Ù„Ø¹Ø«ÙˆØ± Ø¹Ù„Ù‰ Ø£Ø¯Ù„Ø© ÙƒØ§ÙÙŠØ© ÙÙŠ Ø§Ù„ÙˆØ«Ø§Ø¦Ù‚ Ø§Ù„Ù…ÙÙ‡Ø±Ø³Ø© Ù„Ù„Ø¥Ø¬Ø§Ø¨Ø© Ø¹Ù„Ù‰ Ù‡Ø°Ø§ Ø§Ù„Ø³Ø¤Ø§Ù„.</system:String>
+    <system:String x:Key="AskProcessing">Ø¬Ø§Ø±Ù Ø§Ù„Ù…Ø¹Ø§Ù„Ø¬Ø©...</system:String>
+    <system:String x:Key="AskHistory">Ø³Ø¬Ù„ Ø§Ù„Ø§Ø³ØªØ¹Ù„Ø§Ù…Ø§Øª</system:String>
+    <system:String x:Key="AskWarnings">ØªØ­Ø°ÙŠØ±Ø§Øª</system:String>
+    <system:String x:Key="AskLlmUnavailable">Ø§Ù„Ù†Ù…ÙˆØ°Ø¬ ØºÙŠØ± Ù…ØªÙˆÙØ± â€” ÙˆØ¶Ø¹ Ø§Ù„Ù…ÙƒØªØ¨Ø© ÙÙ‚Ø·</system:String>
+    <system:String x:Key="AskPage">ØµÙØ­Ø©</system:String>
+    <system:String x:Key="AskSimilarity">Ø§Ù„ØªØ´Ø§Ø¨Ù‡</system:String>
+
+    <!-- Documents View -->
+    <system:String x:Key="DocsTitle">Ø¥Ø¯Ø§Ø±Ø© Ø§Ù„ÙˆØ«Ø§Ø¦Ù‚</system:String>
+    <system:String x:Key="DocsDropZone">Ø£Ø³Ù‚Ø· Ù…Ù„ÙØ§Øª PDF Ù‡Ù†Ø§</system:String>
+    <system:String x:Key="DocsDropSubtext">Ø£Ùˆ Ø§Ù†Ù‚Ø± Ù„Ø§Ø®ØªÙŠØ§Ø± Ø§Ù„Ù…Ù„ÙØ§Øª</system:String>
+    <system:String x:Key="DocsBrowse">Ø§Ø®ØªØ± Ù…Ù„ÙØ§Øª</system:String>
+    <system:String x:Key="DocsIngestDir">ÙÙ‡Ø±Ø³Ø© Ù…Ø¬Ù„Ø¯ Ø§Ù„Ù…Ø±Ø§Ù‚Ø¨Ø©</system:String>
+    <system:String x:Key="DocsOpenWatch">ÙØªØ­ Ù…Ø¬Ù„Ø¯ Ø§Ù„Ù…Ø±Ø§Ù‚Ø¨Ø©</system:String>
+    <system:String x:Key="DocsRefresh">ØªØ­Ø¯ÙŠØ«</system:String>
+    <system:String x:Key="DocsTotal">Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„ÙˆØ«Ø§Ø¦Ù‚</system:String>
+    <system:String x:Key="DocsIndexed">Ù…ÙÙ‡Ø±Ø³Ø©</system:String>
+    <system:String x:Key="DocsPending">Ø¨Ø§Ù†ØªØ¸Ø§Ø± Ø§Ù„ÙÙ‡Ø±Ø³Ø©</system:String>
+    <system:String x:Key="DocsFailed">ÙØ´Ù„Øª</system:String>
+    <system:String x:Key="DocsQuarantine">Ù…Ø­Ø¬ÙˆØ±Ø©</system:String>
+    <system:String x:Key="DocsVectors">Ø¥Ø¬Ù…Ø§Ù„ÙŠ Ø§Ù„Ù…ØªØ¬Ù‡Ø§Øª</system:String>
+
+    <!-- Settings View -->
+    <system:String x:Key="SettingsTitle">Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª</system:String>
+    <system:String x:Key="SettingsSave">Ø­ÙØ¸ Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª</system:String>
+    <system:String x:Key="SettingsEncryption">Ø§Ù„ØªØ´ÙÙŠØ±</system:String>
+    <system:String x:Key="SettingsEncEnable">ØªÙØ¹ÙŠÙ„ Ø§Ù„ØªØ´ÙÙŠØ±</system:String>
+    <system:String x:Key="SettingsPassphrase">Ø¹Ø¨Ø§Ø±Ø© Ø§Ù„Ù…Ø±ÙˆØ±</system:String>
+    <system:String x:Key="SettingsModel">Ø§Ù„Ù†Ù…ÙˆØ°Ø¬</system:String>
+    <system:String x:Key="SettingsLlmPath">Ù…Ø³Ø§Ø± Ù†Ù…ÙˆØ°Ø¬ LLM</system:String>
+    <system:String x:Key="SettingsEmbPath">Ù…Ø³Ø§Ø± Ù†Ù…ÙˆØ°Ø¬ Ø§Ù„ØªØ¶Ù…ÙŠÙ†</system:String>
+    <system:String x:Key="SettingsGpu">ÙˆØ­Ø¯Ø© Ù…Ø¹Ø§Ù„Ø¬Ø© Ø§Ù„Ø±Ø³ÙˆÙ…Ø§Øª</system:String>
+    <system:String x:Key="SettingsGpuLayers">Ø·Ø¨Ù‚Ø§Øª GPU</system:String>
+    <system:String x:Key="SettingsContextSize">Ø­Ø¬Ù… Ø§Ù„Ø³ÙŠØ§Ù‚</system:String>
+    <system:String x:Key="SettingsRetrieval">Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª Ø§Ù„Ø§Ø³ØªØ±Ø¬Ø§Ø¹</system:String>
+    <system:String x:Key="SettingsTopK">Ø£Ø¹Ù„Ù‰ K Ù†ØªØ§Ø¦Ø¬</system:String>
+    <system:String x:Key="SettingsThreshold">Ø¹ØªØ¨Ø© Ø§Ù„ØªØ´Ø§Ø¨Ù‡</system:String>
+    <system:String x:Key="SettingsAbstention">Ø¹ØªØ¨Ø© Ø§Ù„Ø§Ù…ØªÙ†Ø§Ø¹</system:String>
+    <system:String x:Key="SettingsStrict">Ø§Ù„ÙˆØ¶Ø¹ Ø§Ù„ØµØ§Ø±Ù…</system:String>
+    <system:String x:Key="SettingsDualPass">Ø§Ù„ØªØ­Ù‚Ù‚ Ø§Ù„Ù…Ø²Ø¯ÙˆØ¬</system:String>
+    <system:String x:Key="SettingsIngestion">Ø§Ù„ÙÙ‡Ø±Ø³Ø©</system:String>
+    <system:String x:Key="SettingsWatchDir">Ù…Ø¬Ù„Ø¯ Ø§Ù„Ù…Ø±Ø§Ù‚Ø¨Ø©</system:String>
+    <system:String x:Key="SettingsParallel">Ù…Ù„ÙØ§Øª Ù…ØªÙˆØ§Ø²ÙŠØ©</system:String>
+    <system:String x:Key="SettingsDataDir">Ù…Ø¬Ù„Ø¯ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª</system:String>
+    <system:String x:Key="SettingsBrowse">Ø§Ø³ØªØ¹Ø±Ø§Ø¶</system:String>
+    <system:String x:Key="SettingsRestart">Ø£Ø¹Ø¯ ØªØ´ØºÙŠÙ„ Ø§Ù„ØªØ·Ø¨ÙŠÙ‚ Ù„ØªØ·Ø¨ÙŠÙ‚ Ø§Ù„ØªØºÙŠÙŠØ±Ø§Øª</system:String>
+
+    <!-- Health View -->
+    <system:String x:Key="HealthTitle">Ø­Ø§Ù„Ø© Ø§Ù„Ù†Ø¸Ø§Ù…</system:String>
+    <system:String x:Key="HealthRefresh">ØªØ­Ø¯ÙŠØ«</system:String>
+    <system:String x:Key="HealthLlm">Ø­Ø§Ù„Ø© Ø§Ù„Ù†Ù…ÙˆØ°Ø¬</system:String>
+    <system:String x:Key="HealthGpu">ÙˆØ­Ø¯Ø© Ù…Ø¹Ø§Ù„Ø¬Ø© Ø§Ù„Ø±Ø³ÙˆÙ…Ø§Øª</system:String>
+    <system:String x:Key="HealthVectors">Ù…Ø®Ø²Ù† Ø§Ù„Ù…ØªØ¬Ù‡Ø§Øª</system:String>
+    <system:String x:Key="HealthDocs">Ø§Ù„ÙˆØ«Ø§Ø¦Ù‚</system:String>
+    <system:String x:Key="HealthAudit">Ø³Ù„Ø³Ù„Ø© Ø§Ù„ØªØ¯Ù‚ÙŠÙ‚</system:String>
+    <system:String x:Key="HealthVerifyAudit">Ø§Ù„ØªØ­Ù‚Ù‚ Ù…Ù† Ø§Ù„Ø³Ù„Ø³Ù„Ø©</system:String>
+    <system:String x:Key="HealthExportAudit">ØªØµØ¯ÙŠØ± Ø³Ø¬Ù„ Ø§Ù„ØªØ¯Ù‚ÙŠÙ‚</system:String>
+    <system:String x:Key="HealthMetrics">Ø§Ù„Ù…Ù‚Ø§ÙŠÙŠØ³</system:String>
+    <system:String x:Key="HealthEncryption">Ø­Ø§Ù„Ø© Ø§Ù„ØªØ´ÙÙŠØ±</system:String>
+
+    <!-- Warnings -->
+    <system:String x:Key="EncryptionWarning">âš  Ø§Ù„ØªØ´ÙÙŠØ± ØºÙŠØ± Ù…ÙØ¹Ù‘Ù„. Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„ÙˆØ«Ø§Ø¦Ù‚ ØºÙŠØ± Ù…Ø­Ù…ÙŠØ©. ÙŠÙÙ†ØµØ­ Ø¨ØªÙØ¹ÙŠÙ„ Ø§Ù„ØªØ´ÙÙŠØ± Ù…Ù† Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª.</system:String>
+    <system:String x:Key="EncryptionEnable">ØªÙØ¹ÙŠÙ„ Ø§Ù„Ø¢Ù†</system:String>
+    <system:String x:Key="ModelWarning">âš  Ø§Ù„Ù†Ù…ÙˆØ°Ø¬ ØºÙŠØ± Ù…ØªÙˆÙØ± â€” Ø§Ù„ØªØ·Ø¨ÙŠÙ‚ ÙŠØ¹Ù…Ù„ ÙÙŠ ÙˆØ¶Ø¹ Ø§Ù„Ù…ÙƒØªØ¨Ø© ÙÙ‚Ø·</system:String>
+
+    <!-- Status -->
+    <system:String x:Key="StatusReady">Ø¬Ø§Ù‡Ø²</system:String>
+    <system:String x:Key="StatusProcessing">Ø¬Ø§Ø±Ù Ø§Ù„Ù…Ø¹Ø§Ù„Ø¬Ø©</system:String>
+    <system:String x:Key="StatusVectors">Ù…ØªØ¬Ù‡Ø§Øª</system:String>
+
+    <!-- Chat View -->
+    <system:String x:Key="ChatTitle">Ø§Ù„Ù…Ø­Ø§Ø¯Ø«Ø© Ø§Ù„Ù‚Ø§Ù†ÙˆÙ†ÙŠØ©</system:String>
+    <system:String x:Key="ChatPlaceholder">Ø§ÙƒØªØ¨ Ø³Ø¤Ø§Ù„Ùƒ Ø§Ù„Ù‚Ø§Ù†ÙˆÙ†ÙŠ Ù‡Ù†Ø§...</system:String>
+    <system:String x:Key="ChatSend">Ø¥Ø±Ø³Ø§Ù„</system:String>
+    <system:String x:Key="ChatNewSession">Ù…Ø­Ø§Ø¯Ø«Ø© Ø¬Ø¯ÙŠØ¯Ø©</system:String>
+    <system:String x:Key="ChatYou">Ø£Ù†Øª</system:String>
+    <system:String x:Key="ChatAssistant">Ø§Ù„Ù…Ø³Ø§Ø¹Ø¯ Ø§Ù„Ù‚Ø§Ù†ÙˆÙ†ÙŠ</system:String>
+    <system:String x:Key="ChatSystem">Ø§Ù„Ù†Ø¸Ø§Ù…</system:String>
+    <system:String x:Key="ChatCitationCount">Ø§Ø³ØªØ´Ù‡Ø§Ø¯</system:String>
+    <system:String x:Key="ChatSearching">Ø¬Ø§Ø±Ù Ø§Ù„Ø¨Ø­Ø« ÙÙŠ Ø§Ù„ÙˆØ«Ø§Ø¦Ù‚...</system:String>
+    <system:String x:Key="ChatGenerating">Ø¬Ø§Ø±Ù ØªÙˆÙ„ÙŠØ¯ Ø§Ù„Ø¥Ø¬Ø§Ø¨Ø©...</system:String>
+    <system:String x:Key="ChatCaseNamespace">Ù†Ø·Ø§Ù‚ Ø§Ù„Ù‚Ø¶ÙŠØ©</system:String>
+    <system:String x:Key="ChatLibraryOnly">Ø§Ù„Ù…Ø­Ø§Ø¯Ø«Ø© Ù…Ø¹Ø·Ù‘Ù„Ø© Ø­ØªÙ‰ ÙŠØ¹ÙˆØ¯ Ø§Ù„Ù†Ø¸Ø§Ù… Ù„Ù„Ø¹Ù…Ù„ Ø¨Ø´ÙƒÙ„ ÙƒØ§Ù…Ù„.</system:String>
+
+    <!-- Fail-Closed Safety -->
+    <system:String x:Key="LibraryOnlyTitle">â›” ÙˆØ¶Ø¹ Ø§Ù„Ù…ÙƒØªØ¨Ø© ÙÙ‚Ø· â€” Ø§Ù„Ø§Ø³ØªØ¹Ù„Ø§Ù… Ø§Ù„Ù‚Ø§Ù†ÙˆÙ†ÙŠ Ù…Ø¹Ø·Ù‘Ù„</system:String>
+    <system:String x:Key="LibraryOnlyDesc">ÙŠÙ…ÙƒÙ†Ùƒ ØªØµÙØ­ Ø§Ù„ÙˆØ«Ø§Ø¦Ù‚ ÙˆØ¥Ø¯Ø§Ø±ØªÙ‡Ø§ØŒ Ù„ÙƒÙ† Ù„Ø§ ÙŠÙ…ÙƒÙ† Ø·Ø±Ø­ Ø§Ù„Ø£Ø³Ø¦Ù„Ø© Ø­ØªÙ‰ ÙŠØªÙ… Ø­Ù„ Ø§Ù„Ù…Ø´ÙƒÙ„Ø©.</system:String>
+    <system:String x:Key="SafetyCritical">â›” ØªØ­Ø°ÙŠØ± Ø£Ù…Ø§Ù† Ø­Ø±Ø¬ â€” Ù„Ø§ ØªØ¹ØªÙ…Ø¯ Ø¹Ù„Ù‰ Ù‡Ø°Ù‡ Ø§Ù„Ø¥Ø¬Ø§Ø¨Ø© Ø¯ÙˆÙ† ØªØ­Ù‚Ù‚ Ù…Ø³ØªÙ‚Ù„.</system:String>
+    <system:String x:Key="SafetyWarning">âš  ØªØ­Ø°ÙŠØ±Ø§Øª Ø£Ù…Ø§Ù† â€” ØªØ­Ù‚Ù‚ Ù…Ù† Ø§Ù„Ù…ØµØ§Ø¯Ø± Ù‚Ø¨Ù„ Ø§Ù„Ø§Ø¹ØªÙ…Ø§Ø¯ Ø¹Ù„Ù‰ Ø§Ù„Ø¥Ø¬Ø§Ø¨Ø©.</system:String>
+    <system:String x:Key="SafetyDisclaimer">âš– Ù„Ø§ ØªØ¹ØªÙ…Ø¯ Ø¹Ù„Ù‰ Ù‡Ø°Ù‡ Ø§Ù„Ø¥Ø¬Ø§Ø¨Ø© ÙÙŠ Ø§ØªØ®Ø§Ø° Ù‚Ø±Ø§Ø±Ø§Øª Ù‚Ø§Ù†ÙˆÙ†ÙŠØ© Ø¯ÙˆÙ† Ù…Ø±Ø§Ø¬Ø¹Ø© Ù…Ø³ØªÙ‚Ù„Ø©.</system:String>
+    <system:String x:Key="StrictModeLocked">ðŸ”’ Ø§Ù„ÙˆØ¶Ø¹ Ø§Ù„ØµØ§Ø±Ù… Ù…Ù‚ÙÙ„ Ø¯Ø§Ø¦Ù…Ø§Ù‹ â€” Ù†Ø¸Ø§Ù… Ø­ÙŠÙˆÙŠ Ù…Ù‚ÙŠÙ‘Ø¯ Ø¨Ø§Ù„Ø£Ø¯Ù„Ø©.</system:String>
+    <system:String x:Key="SystemBlockBanner">â›” ÙˆØ¶Ø¹ Ø§Ù„Ù…ÙƒØªØ¨Ø© ÙÙ‚Ø· â€” Ø§Ù„Ø§Ø³ØªØ¹Ù„Ø§Ù… Ø§Ù„Ù‚Ø§Ù†ÙˆÙ†ÙŠ Ù…Ø¹Ø·Ù‘Ù„ Ù„Ø£Ø³Ø¨Ø§Ø¨ ØªØªØ¹Ù„Ù‚ Ø¨Ø§Ù„Ø³Ù„Ø§Ù…Ø©</system:String>
+    <system:String x:Key="StatusLibraryOnly">âš  ÙˆØ¶Ø¹ Ø§Ù„Ù…ÙƒØªØ¨Ø© ÙÙ‚Ø·</system:String>
+    <system:String x:Key="StatusDegraded">âš  ØªØ´ØºÙŠÙ„ Ù…Ø¹ ØªØ­Ø°ÙŠØ±Ø§Øª</system:String>
+
+</ResourceDictionary>
+

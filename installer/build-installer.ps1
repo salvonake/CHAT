@@ -1,533 +1,612 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Builds the LegalAI Desktop MSI + EXE installer.
+    Builds the authoritative Poseidon WiX MSI and Burn bundle.
 
 .DESCRIPTION
-    1. Publishes the WPF Desktop app as self-contained win-x64
-    2. Stages model files (GGUF + ONNX)
-    3. Builds WiX v5 MSI installer (Package)
-    4. Builds WiX v5 EXE bootstrapper (Burn Bundle)
-
-.PARAMETER ModelsPath
-    Path to directory containing model files:
-      - qwen2.5-14b.Q5_K_M.gguf  (~10 GB)
-      - arabert.onnx               (~500 MB)
-
-.PARAMETER SkipModels
-    Skip model bundling (for dev/CI builds without the large model)
-
-.PARAMETER SkipPublish
-    Skip dotnet publish (reuse previous publish output)
-
-.PARAMETER Configuration
-    Build configuration (Debug or Release). Default: Release
-
-.EXAMPLE
-    .\build-installer.ps1 -ModelsPath "D:\models"
-    .\build-installer.ps1 -SkipModels          # dev build, no models
-    .\build-installer.ps1 -SkipPublish          # reuse last publish
+    Production builds publish Poseidon.Desktop and Poseidon.ProvisioningCheck,
+    generate a machine-level runtime config, generate strict model/provenance
+    artifacts, verify pinned prerequisites, validate the staged provisioning
+    contract, build WiX MSI/Burn artifacts, sign release artifacts, and verify
+    signatures before release output is accepted.
 #>
 [CmdletBinding()]
 param(
     [string]$ModelsPath = ".\models",
-    [switch]$SkipModels,
+    [switch]$Degraded,
+    [switch]$AllowTestModels,
     [switch]$SkipPrereqDownload,
     [switch]$SkipPublish,
-    [switch]$NoCleanOutput,
     [ValidateSet("Debug", "Release")]
-    [string]$Configuration = "Release"
+    [string]$Configuration = "Release",
+    [ValidateSet("Production", "NonProduction")]
+    [string]$BuildProfile = "Production",
+    [switch]$UnsignedDevelopmentBuild,
+    [string]$PrerequisitesConfigPath = "",
+    [string]$EncryptionPassphrase = "",
+    [string]$SignToolPath = "",
+    [string]$SigningCertificateThumbprint = "",
+    [string]$SigningCertificatePath = "",
+    [string]$SigningCertificatePassword = "",
+    [string]$TimestampUrl = "http://timestamp.digicert.com",
+    [ValidateSet("LocalMachine", "CurrentUser")]
+    [string]$SecretScope = "LocalMachine",
+    [string]$SecretKeyVersion = "v1"
 )
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
-$Root        = Split-Path $PSScriptRoot -Parent
-$PublishDir  = Join-Path $Root "publish\win-x64"
+$Root = Split-Path $PSScriptRoot -Parent
 $InstallerDir = $PSScriptRoot
-$OutputDir   = Join-Path $InstallerDir "output"
-$PrereqsDir  = Join-Path $InstallerDir "prereqs"
-$PlaceholderModelsDir = Join-Path $InstallerDir "models-placeholder"
-$DesktopProj = Join-Path $Root "src\LegalAI.Desktop\LegalAI.Desktop.csproj"
-$ExternalModelsManifest = Join-Path $OutputDir "external-models.manifest.json"
+$PublishDir = Join-Path $Root "publish\win-x64"
+$ProvisioningPublishDir = Join-Path $Root "publish\provisioning-check\win-x64"
+$OutputDir = Join-Path $InstallerDir "output"
+$ObjDir = Join-Path $InstallerDir "obj"
+$GeneratedDir = Join-Path $InstallerDir "generated"
+$StagedInstallDir = Join-Path $GeneratedDir "staged-install"
+$PrereqsDir = Join-Path $InstallerDir "prereqs"
+$DesktopProj = Join-Path $Root "src\Poseidon.Desktop\Poseidon.Desktop.csproj"
+$ProvisioningProj = Join-Path $Root "src\Poseidon.ProvisioningCheck\Poseidon.ProvisioningCheck.csproj"
+$ProvisioningExe = Join-Path $ProvisioningPublishDir "provisioning-check.exe"
+$MachineConfigPath = Join-Path $GeneratedDir "appsettings.user.json"
+$ModelManifestPath = Join-Path $GeneratedDir "model-manifest.json"
+$BuildProvenancePath = Join-Path $GeneratedDir "build-provenance.json"
+$PrerequisiteReportPath = Join-Path $GeneratedDir "prerequisite-validation.json"
+$SigningReportPath = Join-Path $GeneratedDir "signing-report.json"
+
+if ([string]::IsNullOrWhiteSpace($PrerequisitesConfigPath)) {
+    $PrerequisitesConfigPath = Join-Path $InstallerDir "prerequisites.json"
+}
+
+if ([string]::IsNullOrWhiteSpace($EncryptionPassphrase)) {
+    $EncryptionPassphrase = [Environment]::GetEnvironmentVariable("POSEIDON_INSTALLER_ENCRYPTION_PASSPHRASE")
+}
+
+if ($BuildProfile -eq "NonProduction" -and [string]::IsNullOrWhiteSpace($EncryptionPassphrase)) {
+    $EncryptionPassphrase = "NonProductionInstallerLocalKey!2026_CiPackagingOnly"
+}
+
+if ($BuildProfile -eq "Production" -and $UnsignedDevelopmentBuild) {
+    throw "-UnsignedDevelopmentBuild is only valid with -BuildProfile NonProduction."
+}
+
+if ($AllowTestModels -and $BuildProfile -eq "Production") {
+    throw "-AllowTestModels is only valid with -BuildProfile NonProduction."
+}
 
 if (-not [System.IO.Path]::IsPathRooted($ModelsPath)) {
-    $ModelsPath = Join-Path $InstallerDir $ModelsPath
-}
-
-$modelManifestEntries = @()
-$externalModelsMode = $false
-$modelSourcePathForManifest = $null
-
-function Initialize-PlaceholderModels {
-    param(
-        [string]$PlaceholderDir
-    )
-
-    if (-not (Test-Path $PlaceholderDir)) {
-        New-Item -ItemType Directory -Path $PlaceholderDir -Force | Out-Null
-    }
-
-    $placeholderLlm = Join-Path $PlaceholderDir "qwen2.5-14b.Q5_K_M.gguf"
-    $placeholderEmb = Join-Path $PlaceholderDir "arabert.onnx"
-
-    if (-not (Test-Path $placeholderLlm)) {
-        Set-Content -Path $placeholderLlm -Value "placeholder-llm-model" -Encoding ASCII
-    }
-
-    if (-not (Test-Path $placeholderEmb)) {
-        Set-Content -Path $placeholderEmb -Value "placeholder-embedding-model" -Encoding ASCII
-    }
-
-    return @{
-        ModelsPath = $PlaceholderDir
-        LlmModelFileName = "qwen2.5-14b.Q5_K_M.gguf"
+    $rootRelativeModelsPath = Join-Path $Root $ModelsPath
+    $installerRelativeModelsPath = Join-Path $InstallerDir $ModelsPath
+    $ModelsPath = if (Test-Path $rootRelativeModelsPath) {
+        $rootRelativeModelsPath
+    } else {
+        $installerRelativeModelsPath
     }
 }
 
-Write-Host ""
-Write-Host "===============================================" -ForegroundColor Cyan
-Write-Host "  LegalAI Desktop - MSI + EXE Installer Build"  -ForegroundColor Cyan
-Write-Host "  Configuration : $Configuration"                -ForegroundColor Cyan
-Write-Host "  Models path   : $(if ($SkipModels) { '(skipped)' } else { $ModelsPath })" -ForegroundColor Cyan
-Write-Host "  Clean output  : $(if ($NoCleanOutput) { 'no' } else { 'yes' })" -ForegroundColor Cyan
-Write-Host "===============================================" -ForegroundColor Cyan
-Write-Host ""
+$mode = if ($Degraded) { "degraded" } else { "full" }
+$minimumLlmBytes = 100MB
+$minimumEmbeddingBytes = 1MB
+$manifestSchemaVersion = 2
+$prerequisiteResults = @()
+$signingResults = @()
 
-# ─────────────────────────────────────────
-# Step 1: Publish Desktop application
-# ─────────────────────────────────────────
-if (-not $SkipPublish) {
-    Write-Host "[1/6] Publishing LegalAI.Desktop (self-contained win-x64)..." -ForegroundColor Yellow
-
-    if (-not (Test-Path $DesktopProj)) {
-        Write-Error "Desktop project not found: $DesktopProj"
-        exit 1
+function Reset-Directory([string]$Path) {
+    if (Test-Path $Path) {
+        Remove-Item -Recurse -Force $Path
     }
-
-    # Clean previous publish
-    if (Test-Path $PublishDir) {
-        Write-Host "  Cleaning previous publish output..." -ForegroundColor DarkGray
-        Remove-Item -Recurse -Force $PublishDir
-    }
-
-    dotnet publish $DesktopProj `
-        -c $Configuration `
-        -r win-x64 `
-        --self-contained true `
-        -o $PublishDir `
-        /p:PublishSingleFile=false `
-        /p:IncludeNativeLibrariesForSelfExtract=true `
-        /p:DebugType=none `
-        /p:DebugSymbols=false
-
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "dotnet publish failed with exit code $LASTEXITCODE"
-        exit 1
-    }
-
-    $fileCount = (Get-ChildItem $PublishDir -Recurse -File).Count
-    $totalSize = (Get-ChildItem $PublishDir -Recurse -File | Measure-Object -Sum Length).Sum / 1MB
-    Write-Host "  Published: $fileCount files, $([math]::Round($totalSize, 1)) MB" -ForegroundColor Green
+    New-Item -ItemType Directory -Path $Path -Force | Out-Null
 }
-else {
-    Write-Host "[1/6] Skipping publish (-SkipPublish)..." -ForegroundColor DarkGray
 
-    if (-not (Test-Path $PublishDir)) {
-        Write-Error "No previous publish output found at $PublishDir. Run without -SkipPublish first."
-        exit 1
+function Ensure-Directory([string]$Path) {
+    if (-not (Test-Path $Path)) {
+        New-Item -ItemType Directory -Path $Path -Force | Out-Null
     }
 }
 
-# ─────────────────────────────────────────
-# Step 2: Validate model files
-# ─────────────────────────────────────────
-if (-not $SkipModels) {
-    Write-Host "[2/6] Validating model files..." -ForegroundColor Yellow
-
-    $ResolvedModels = Resolve-Path $ModelsPath -ErrorAction SilentlyContinue
-    if (-not $ResolvedModels) {
-        Write-Error "Models directory not found: $ModelsPath`nUse -ModelsPath <dir> or -SkipModels for dev builds."
-        exit 1
-    }
-    $ModelsPath = $ResolvedModels.Path
-    $modelSourcePathForManifest = $ModelsPath
-
-    $llmCandidates = @(
-        "qwen2.5-14b.Q5_K_M.gguf",
-        "Qwen_Qwen3.5-9B-Q5_K_M.gguf",
-        "Qwen3.5-9B-Q5_K_M.gguf"
-    )
-
-    $llmModelFileName = $llmCandidates | Where-Object {
-        Test-Path (Join-Path $ModelsPath $_)
-    } | Select-Object -First 1
-
-    if (-not $llmModelFileName) {
-        Write-Warning "Optional LLM model missing. Checked: $($llmCandidates -join ', ')"
-    }
-    else {
-        $llmPath = Join-Path $ModelsPath $llmModelFileName
-        $llmSize = (Get-Item $llmPath).Length
-        $llmUnit = if ($llmSize -gt 1GB) { "$([math]::Round($llmSize / 1GB, 2)) GB" } else { "$([math]::Round($llmSize / 1MB, 1)) MB" }
-        Write-Host "  [OK] $llmModelFileName - $llmUnit" -ForegroundColor Green
-
-        if ($llmSize -ge 2GB) {
-            Write-Warning "LLM model '$llmModelFileName' is too large for MSI embedding ($llmUnit). Switching to external-model mode for this build."
-            $externalModelsMode = $true
-        }
-
-        Write-Host "    Computing SHA-256..." -ForegroundColor DarkGray
-        $llmHash = (Get-FileHash $llmPath -Algorithm SHA256).Hash.ToLower()
-        Write-Host "    Hash: $llmHash" -ForegroundColor DarkGray
-
-        $modelManifestEntries += [pscustomobject]@{
-            Name = $llmModelFileName
-            Type = "llm"
-            Required = $false
-            SourcePath = $llmPath
-            SizeBytes = $llmSize
-            Sha256 = $llmHash
+function Get-RequiredFile([string]$Directory, [string[]]$Names, [string]$Label) {
+    foreach ($name in $Names) {
+        $candidate = Join-Path $Directory $name
+        if (Test-Path $candidate -PathType Leaf) {
+            return (Resolve-Path $candidate).Path
         }
     }
 
-    $models = @(
-        @{ Name = "arabert.onnx"; Required = $true; Feature = "Embedding Model" }
-    )
+    throw "$Label not found. Checked: $($Names -join ', ') in $Directory"
+}
 
-    $allPresent = $true
-    foreach ($m in $models) {
-        $fp = Join-Path $ModelsPath $m.Name
-        if (Test-Path $fp) {
-            $sz = (Get-Item $fp).Length
-            $unit = if ($sz -gt 1GB) { "$([math]::Round($sz / 1GB, 2)) GB" } else { "$([math]::Round($sz / 1MB, 1)) MB" }
-            Write-Host "  [OK] $($m.Name) - $unit" -ForegroundColor Green
-
-            if ($sz -ge 2GB) {
-                Write-Warning "Model '$($m.Name)' is too large for MSI embedding ($unit). Switching to external-model mode for this build."
-                $externalModelsMode = $true
-            }
-
-            # Compute SHA-256 for integrity verification at runtime
-            Write-Host "    Computing SHA-256..." -ForegroundColor DarkGray
-            $hash = (Get-FileHash $fp -Algorithm SHA256).Hash.ToLower()
-            Write-Host "    Hash: $hash" -ForegroundColor DarkGray
-
-            $modelManifestEntries += [pscustomobject]@{
-                Name = $m.Name
-                Type = "embedding"
-                Required = [bool]$m.Required
-                SourcePath = $fp
-                SizeBytes = $sz
-                Sha256 = $hash
-            }
-        }
-        else {
-            if ($m.Required) {
-                Write-Error "Required model missing: $fp"
-                $allPresent = $false
-            }
-            else {
-                Write-Warning "Optional model missing: $fp (LLM feature will be excluded)"
-            }
-        }
+function Assert-ProductionModel([string]$Path, [int64]$MinimumBytes, [string]$Label) {
+    $item = Get-Item $Path
+    if ($item.Length -le 0) {
+        throw "$Label is empty: $Path"
     }
 
-    if (-not $allPresent) {
-        Write-Error "Required model files are missing. Build aborted."
-        exit 1
-    }
-
-    if ($externalModelsMode) {
-        Write-Warning "One or more models exceed MSI payload limits. Continuing with external-model packaging mode."
-        $placeholderConfig = Initialize-PlaceholderModels -PlaceholderDir $PlaceholderModelsDir
-        $ModelsPath = $placeholderConfig.ModelsPath
-        $llmModelFileName = $placeholderConfig.LlmModelFileName
+    if (-not $AllowTestModels -and $item.Length -lt $MinimumBytes) {
+        throw "$Label is too small for production packaging ($($item.Length) bytes). Use -BuildProfile NonProduction -AllowTestModels only for CI/dev validation."
     }
 }
-else {
-    Write-Host "[2/6] Skipping model validation (-SkipModels)..." -ForegroundColor DarkGray
 
-    $placeholderConfig = Initialize-PlaceholderModels -PlaceholderDir $PlaceholderModelsDir
-    $ModelsPath = $placeholderConfig.ModelsPath
-    $llmModelFileName = $placeholderConfig.LlmModelFileName
-}
+function Assert-StrongSecret([string]$Value, [string]$Label) {
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        throw "$Label is required."
+    }
 
-# ─────────────────────────────────────────
-# Step 3: Download prerequisite installers
-# ─────────────────────────────────────────
-Write-Host "[3/6] Preparing prerequisite installers..." -ForegroundColor Yellow
+    $bytes = [System.Text.Encoding]::UTF8.GetByteCount($Value.Trim())
+    $distinct = ($Value.Trim().ToCharArray() | Select-Object -Unique).Count
+    $classes = 0
+    if ($Value -cmatch '[a-z]') { $classes++ }
+    if ($Value -cmatch '[A-Z]') { $classes++ }
+    if ($Value -match '\d') { $classes++ }
+    if ($Value -match '[^a-zA-Z0-9]') { $classes++ }
+    $placeholderFragments = @("change", "placeholder", "secret", "password", "test-key", "dev-local", "poseidon_dev")
 
-if (-not (Test-Path $PrereqsDir)) {
-    New-Item -ItemType Directory -Path $PrereqsDir -Force | Out-Null
-}
+    if ($bytes -lt 32 -or $distinct -lt 12 -or $classes -lt 3) {
+        throw "$Label must contain at least 32 bytes of high-entropy key material."
+    }
 
-$prereqs = @(
-    @{ Name = "vc_redist.x64.exe"; Url = "https://aka.ms/vs/17/release/vc_redist.x64.exe" },
-    @{ Name = "windowsdesktop-runtime-8.0-win-x64.exe"; Url = "https://aka.ms/dotnet/8.0/windowsdesktop-runtime-win-x64.exe" }
-)
-
-if ($SkipPrereqDownload) {
-    Write-Host "  Skipping prerequisite download (-SkipPrereqDownload)." -ForegroundColor DarkGray
-}
-else {
-    foreach ($pr in $prereqs) {
-        $target = Join-Path $PrereqsDir $pr.Name
-        $needsDownload = $true
-
-        if (Test-Path $target) {
-            $existingSize = (Get-Item $target).Length
-            if ($existingSize -gt 0) {
-                $needsDownload = $false
-                Write-Host "  [OK] Found $($pr.Name)" -ForegroundColor Green
-            }
-        }
-
-        if ($needsDownload) {
-            Write-Host "  Downloading $($pr.Name)..." -ForegroundColor DarkGray
-            try {
-                Invoke-WebRequest -Uri $pr.Url -OutFile $target
-            }
-            catch {
-                Write-Error "Failed to download $($pr.Name) from $($pr.Url): $($_.Exception.Message)"
-                exit 1
-            }
-
-            if (-not (Test-Path $target) -or (Get-Item $target).Length -le 0) {
-                Write-Error "Downloaded file is missing or empty: $target"
-                exit 1
-            }
-
-            Write-Host "  [OK] Downloaded $($pr.Name)" -ForegroundColor Green
+    $normalized = $Value.Trim().ToLowerInvariant()
+    foreach ($fragment in $placeholderFragments) {
+        if ($normalized.Contains($fragment)) {
+            throw "$Label contains a placeholder or development value."
         }
     }
 }
 
-# Validate prerequisite payloads for bundle build
-foreach ($pr in $prereqs) {
-    $target = Join-Path $PrereqsDir $pr.Name
-    if (-not (Test-Path $target)) {
-        Write-Error "Missing prerequisite payload: $target`nRun without -SkipPrereqDownload or place the file manually."
-        exit 1
+function New-ModelEntry([string]$SourcePath, [string]$Type, [bool]$Required) {
+    $item = Get-Item $SourcePath
+    $hash = (Get-FileHash $SourcePath -Algorithm SHA256).Hash.ToLowerInvariant()
+    $target = if ($Type -eq "llm") {
+        "[INSTALLDIR]Models\$($item.Name)"
+    } else {
+        "[INSTALLDIR]Models\arabert.onnx"
+    }
+
+    [pscustomobject]@{
+        filename = $item.Name
+        type = $Type
+        required = $Required
+        mode = $mode
+        sizeBytes = $item.Length
+        sha256 = $hash
+        targetPath = $target
     }
 }
 
-# ─────────────────────────────────────────
-# Step 4: Verify Resources
-# ─────────────────────────────────────────
-Write-Host "[4/6] Verifying installer resources..." -ForegroundColor Yellow
-
-$resDir = Join-Path $InstallerDir "Resources"
-$icoPath = Join-Path $resDir "LegalAI.ico"
-if (-not (Test-Path $icoPath)) {
-    Write-Warning "Icon file not found: $icoPath - creating placeholder..."
-    if (-not (Test-Path $resDir)) { New-Item -ItemType Directory -Path $resDir -Force | Out-Null }
-
-    # Create a minimal valid .ico file (16x16 1-bit, ~198 bytes)
-    # This is a placeholder - replace with actual branding icon
-    $icoHeader = [byte[]]@(0,0,1,0,1,0,16,16,2,0,1,0,1,0,0xB0,0,0,0,0x16,0,0,0)
-    $bmpHeader = [byte[]]@(
-        0x28,0,0,0,  # biSize=40
-        16,0,0,0,    # biWidth=16
-        32,0,0,0,    # biHeight=32 (XOR+AND)
-        1,0,         # biPlanes=1
-        1,0,         # biBitCount=1
-        0,0,0,0,     # biCompression=0
-        0x80,0,0,0,  # biSizeImage=128
-        0,0,0,0,     # biXPelsPerMeter
-        0,0,0,0,     # biYPelsPerMeter
-        2,0,0,0,     # biClrUsed=2
-        0,0,0,0      # biClrImportant
-    )
-    $palette = [byte[]]@(0x1A,0x1A,0x2E,0, 0xD4,0xAF,0x37,0)  # Dark blue + gold
-    $xorBits = [byte[]]::new(64)  # 16x16 monochrome XOR mask, all 0 = first color
-    $andBits = [byte[]]::new(64)  # AND mask, all 0 = opaque
-
-    $icoData = $icoHeader + $bmpHeader + $palette + $xorBits + $andBits
-    [System.IO.File]::WriteAllBytes($icoPath, $icoData)
-    Write-Host "  Created placeholder icon (replace with branding icon later)" -ForegroundColor DarkYellow
-}
-else {
-    Write-Host "  [OK] Icon file found" -ForegroundColor Green
+function New-ModelProvenanceEntry([string]$SourcePath, [string]$Type) {
+    $item = Get-Item $SourcePath
+    [pscustomobject]@{
+        filename = $item.Name
+        type = $Type
+        sourcePath = $item.FullName
+        sourceSha256 = (Get-FileHash $SourcePath -Algorithm SHA256).Hash.ToLowerInvariant()
+        sourceSizeBytes = $item.Length
+    }
 }
 
-# ─────────────────────────────────────────
-# Step 5: Build WiX MSI
-# ─────────────────────────────────────────
-Write-Host "[5/6] Building WiX MSI installer..." -ForegroundColor Yellow
+function Write-MachineConfig([object[]]$ModelEntries) {
+    $llm = $ModelEntries | Where-Object { $_.type -eq "llm" } | Select-Object -First 1
+    $embedding = $ModelEntries | Where-Object { $_.type -eq "embedding" } | Select-Object -First 1
 
-# Ensure output directory exists
-if (-not (Test-Path $OutputDir)) {
-    New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
+    if ($null -eq $embedding) {
+        throw "Embedding model entry is required."
+    }
+
+    $encryptionSecretRef = "dpapi:$($SecretScope):Poseidon/EncryptionPassphrase:$SecretKeyVersion"
+    $config = [ordered]@{
+        Domain = [ordered]@{
+            ActiveModule = "legal"
+        }
+        Instance = [ordered]@{
+            Environment = if ($BuildProfile -eq "Production") { "Production" } else { "Development" }
+            InstallerMode = $mode
+            BuildProfile = $BuildProfile
+        }
+        Llm = [ordered]@{
+            Provider = if ($null -eq $llm) { "ollama" } else { "llamasharp" }
+            ModelPath = if ($null -eq $llm) { "" } else { $llm.targetPath }
+        }
+        Embedding = [ordered]@{
+            Provider = "onnx"
+            OnnxModelPath = $embedding.targetPath
+            Model = "nomic-embed-text"
+        }
+        Ollama = [ordered]@{
+            Url = "http://localhost:11434"
+            Model = "qwen2.5:14b"
+        }
+        Retrieval = [ordered]@{
+            StrictMode = $true
+            EnableDualPassValidation = $true
+        }
+        SecretStorage = [ordered]@{
+            Provider = "dpapi"
+            Scope = $SecretScope
+            ValidationMode = if ($BuildProfile -eq "Production") { "Required" } else { "DevelopmentPlaintext" }
+        }
+        Security = [ordered]@{
+            EncryptionEnabled = $true
+            EncryptionPassphrase = if ($BuildProfile -eq "Production") { "" } else { $EncryptionPassphrase }
+            EncryptionPassphraseRef = if ($BuildProfile -eq "Production") { $encryptionSecretRef } else { "" }
+            AllowUnencryptedStorage = $false
+            AllowInsecureDevelopmentSecrets = if ($BuildProfile -eq "Production") { $false } else { $true }
+            RequireSignedManagementRequests = $true
+            EncryptionKeyVersion = $SecretKeyVersion
+        }
+        ModelIntegrity = [ordered]@{
+            ExpectedLlmHash = if ($null -eq $llm) { "" } else { $llm.sha256 }
+            ExpectedEmbeddingHash = $embedding.sha256
+        }
+    }
+
+    $config | ConvertTo-Json -Depth 8 | Set-Content -Path $MachineConfigPath -Encoding UTF8
 }
 
-if (-not $NoCleanOutput) {
-    Write-Host "  Cleaning previous installer artifacts from $OutputDir ..." -ForegroundColor DarkGray
-    Get-ChildItem -Path $OutputDir -File -ErrorAction SilentlyContinue |
-        Remove-Item -Force -ErrorAction SilentlyContinue
-}
+function Write-Manifest([object[]]$ModelEntries) {
+    $types = @($ModelEntries | ForEach-Object { $_.type })
+    if ($mode -eq "full" -and (@($types | Where-Object { $_ -eq "llm" }).Count -ne 1 -or @($types | Where-Object { $_ -eq "embedding" }).Count -ne 1)) {
+        throw "Full installer manifest must contain exactly one LLM and one embedding model."
+    }
 
-$manifestOutput = $null
-if ($modelManifestEntries.Count -gt 0) {
-    $manifestMode = if ($externalModelsMode -or $SkipModels) { "external" } else { "embedded" }
-    $manifest = [pscustomobject]@{
+    if ($mode -eq "degraded" -and (@($types | Where-Object { $_ -eq "llm" }).Count -ne 0 -or @($types | Where-Object { $_ -eq "embedding" }).Count -ne 1)) {
+        throw "Degraded installer manifest must contain exactly one embedding model and no local LLM model."
+    }
+
+    $manifest = [ordered]@{
+        schemaVersion = $manifestSchemaVersion
         generatedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
-        mode = $manifestMode
-        sourceModelsPath = $modelSourcePathForManifest
-        models = $modelManifestEntries
+        mode = $mode
+        packaging = "wix-burn"
+        buildProfile = $BuildProfile
+        models = $ModelEntries
     }
 
-    $manifest | ConvertTo-Json -Depth 6 | Set-Content -Path $ExternalModelsManifest -Encoding UTF8
-    $manifestOutput = $ExternalModelsManifest
-    Write-Host "  [OK] Model manifest generated: $manifestOutput" -ForegroundColor Green
+    $manifest | ConvertTo-Json -Depth 8 | Set-Content -Path $ModelManifestPath -Encoding UTF8
 }
 
-$buildStamp = Get-Date -Format 'yyyyMMdd'
-$msiBaseName = "LegalAI-Setup-$buildStamp"
-$msiOutput = Join-Path $OutputDir "$msiBaseName.msi"
-
-if (Test-Path $msiOutput -PathType Container) {
-    Remove-Item -Recurse -Force $msiOutput
-}
-
-# Build WiX Package project (MSI)
-$wixBuildArgs = @(
-    "build",
-    (Join-Path $InstallerDir "LegalAI.Installer.wixproj"),
-    "-t:Rebuild",
-    "-c", $Configuration,
-    "-o", $OutputDir
-)
-
-# Pass models path if not skipping
-$wixBuildArgs += "/p:ModelsPath=$ModelsPath"
-$wixBuildArgs += "/p:LlmModelFileName=$llmModelFileName"
-
-Write-Host "  Running: dotnet $($wixBuildArgs -join ' ')" -ForegroundColor DarkGray
-
-& dotnet @wixBuildArgs
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "WiX MSI build failed with exit code $LASTEXITCODE"
-    exit 1
-}
-
-if (-not (Test-Path $msiOutput)) {
-    $msiCandidate = Get-ChildItem -Path $OutputDir -Filter "*.msi" -File |
-        Sort-Object LastWriteTime -Descending |
-        Select-Object -First 1
-    if ($null -eq $msiCandidate) {
-        Write-Error "MSI output was not found in $OutputDir"
-        exit 1
+function Write-BuildProvenance([object[]]$ModelProvenanceEntries) {
+    $provenance = [ordered]@{
+        schemaVersion = 1
+        generatedAtUtc = (Get-Date).ToUniversalTime().ToString("o")
+        buildProfile = $BuildProfile
+        configuration = $Configuration
+        mode = $mode
+        gitCommit = (& git -C $Root rev-parse HEAD 2>$null)
+        models = $ModelProvenanceEntries
+        prerequisites = $prerequisiteResults
+        signing = $signingResults
+        secretStorage = [ordered]@{
+            provider = "dpapi"
+            scope = $SecretScope
+            keyVersion = $SecretKeyVersion
+            productionPlaintextSecrets = $false
+        }
     }
-    $msiOutput = $msiCandidate.FullName
+
+    $provenance | ConvertTo-Json -Depth 8 | Set-Content -Path $BuildProvenancePath -Encoding UTF8
 }
 
-Write-Host "  [OK] MSI built: $msiOutput" -ForegroundColor Green
+function Copy-StagedModels([object[]]$ModelEntries, [object[]]$ModelSources) {
+    $stagedModelsDir = Join-Path $StagedInstallDir "Models"
+    Ensure-Directory $stagedModelsDir
+    foreach ($entry in $ModelEntries) {
+        $source = $ModelSources | Where-Object { $_.type -eq $entry.type -and $_.filename -eq $entry.filename } | Select-Object -First 1
+        if ($null -eq $source) {
+            throw "Missing source for staged model: $($entry.filename)"
+        }
 
-$msiAliasOutput = Join-Path $OutputDir "LegalAI.Setup.msi"
-if (-not $msiOutput.Equals($msiAliasOutput, [StringComparison]::OrdinalIgnoreCase)) {
-    Copy-Item -Path $msiOutput -Destination $msiAliasOutput -Force
-}
-Write-Host "  [OK] MSI alias: $msiAliasOutput" -ForegroundColor Green
-
-# ─────────────────────────────────────────
-# Step 6: Build WiX EXE Bootstrapper (Burn)
-# ─────────────────────────────────────────
-Write-Host "[6/6] Building WiX EXE bootstrapper (Burn Bundle)..." -ForegroundColor Yellow
-
-$exeBaseName = "LegalAI-Setup-$buildStamp"
-$exeOutput = Join-Path $OutputDir "$exeBaseName.exe"
-$setupAliasOutput = Join-Path $OutputDir "Setup.exe"
-
-if (Test-Path $exeOutput -PathType Container) {
-    Remove-Item -Recurse -Force $exeOutput
+        $targetName = if ($entry.type -eq "embedding") { "arabert.onnx" } else { $entry.filename }
+        Copy-Item -Path $source.sourcePath -Destination (Join-Path $stagedModelsDir $targetName) -Force
+    }
 }
 
-# Build WiX Bundle project (EXE)
-$bundleBuildArgs = @(
-    "build",
-    (Join-Path $InstallerDir "LegalAI.Bundle.wixproj"),
-    "-t:Rebuild",
-    "-c", $Configuration,
-    "-o", $OutputDir
-)
+function Get-SignToolPath {
+    if (-not [string]::IsNullOrWhiteSpace($SignToolPath) -and (Test-Path $SignToolPath -PathType Leaf)) {
+        return (Resolve-Path $SignToolPath).Path
+    }
 
-$bundleBuildArgs += "/p:ModelsPath=$ModelsPath"
-$bundleBuildArgs += "/p:LlmModelFileName=$llmModelFileName"
+    $sdkRoots = @(
+        "${env:ProgramFiles(x86)}\Windows Kits\10\bin",
+        "$env:ProgramFiles\Windows Kits\10\bin"
+    ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path $_) }
 
-Write-Host "  Running: dotnet $($bundleBuildArgs -join ' ')" -ForegroundColor DarkGray
-
-& dotnet @bundleBuildArgs
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Warning "Burn Bundle build failed (exit code $LASTEXITCODE). MSI is still available."
-    $exeOutput = $null
-}
-else {
-    if (-not (Test-Path $exeOutput)) {
-        $exeCandidate = Get-ChildItem -Path $OutputDir -Filter "*.exe" -File |
-            Sort-Object LastWriteTime -Descending |
+    foreach ($root in $sdkRoots) {
+        $candidate = Get-ChildItem -Path $root -Filter signtool.exe -Recurse -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -like "*\x64\signtool.exe" } |
+            Sort-Object FullName -Descending |
             Select-Object -First 1
-        if ($null -eq $exeCandidate) {
-            Write-Warning "EXE output path was not found in $OutputDir."
-            $exeOutput = $null
-        }
-        else {
-            $exeOutput = $exeCandidate.FullName
+        if ($null -ne $candidate) {
+            return $candidate.FullName
         }
     }
-    if ($exeOutput -and -not $exeOutput.Equals($setupAliasOutput, [StringComparison]::OrdinalIgnoreCase)) {
-        Copy-Item -Path $exeOutput -Destination $setupAliasOutput -Force
+
+    return ""
+}
+
+function Invoke-ArtifactSigning([string[]]$Artifacts) {
+    $requiresSigning = $BuildProfile -eq "Production"
+    $signTool = Get-SignToolPath
+    if ([string]::IsNullOrWhiteSpace($signTool)) {
+        if ($requiresSigning) {
+            throw "signtool.exe was not found. Production builds must sign release artifacts."
+        }
+
+        if (-not $UnsignedDevelopmentBuild) {
+            throw "Unsigned non-production builds require -UnsignedDevelopmentBuild."
+        }
+
+        foreach ($artifact in $Artifacts) {
+            $script:signingResults += [pscustomobject]@{
+                path = $artifact
+                status = "unsigned-nonproduction"
+                signer = ""
+                timestampUrl = ""
+            }
+        }
+        return
     }
-    Write-Host "  [OK] EXE built: $exeOutput" -ForegroundColor Green
-    if (Test-Path $setupAliasOutput) {
-        Write-Host "  [OK] EXE alias: $setupAliasOutput" -ForegroundColor Green
+
+    if ([string]::IsNullOrWhiteSpace($SigningCertificateThumbprint) -and [string]::IsNullOrWhiteSpace($SigningCertificatePath)) {
+        if ($requiresSigning) {
+            throw "Production signing requires -SigningCertificateThumbprint or -SigningCertificatePath."
+        }
+
+        if (-not $UnsignedDevelopmentBuild) {
+            throw "Unsigned non-production builds require -UnsignedDevelopmentBuild."
+        }
+
+        foreach ($artifact in $Artifacts) {
+            $script:signingResults += [pscustomobject]@{
+                path = $artifact
+                status = "unsigned-nonproduction"
+                signer = ""
+                timestampUrl = ""
+            }
+        }
+        return
+    }
+
+    foreach ($artifact in $Artifacts) {
+        $args = @("sign", "/fd", "SHA256", "/tr", $TimestampUrl, "/td", "SHA256")
+        if (-not [string]::IsNullOrWhiteSpace($SigningCertificatePath)) {
+            $args += @("/f", $SigningCertificatePath)
+            if (-not [string]::IsNullOrWhiteSpace($SigningCertificatePassword)) {
+                $args += @("/p", $SigningCertificatePassword)
+            }
+        } else {
+            $args += @("/sha1", $SigningCertificateThumbprint)
+        }
+        $args += $artifact
+
+        & $signTool @args
+        if ($LASTEXITCODE -ne 0) {
+            throw "Artifact signing failed: $artifact"
+        }
+
+        $signature = Get-AuthenticodeSignature $artifact
+        if ($signature.Status -ne "Valid") {
+            throw "Signed artifact failed Authenticode verification: $artifact ($($signature.Status))"
+        }
+
+        $script:signingResults += [pscustomobject]@{
+            path = $artifact
+            status = $signature.Status.ToString()
+            signer = $signature.SignerCertificate.Subject
+            thumbprint = $signature.SignerCertificate.Thumbprint
+            timestampUrl = $TimestampUrl
+        }
     }
 }
 
-# ─────────────────────────────────────────
-# Done
-# ─────────────────────────────────────────
-$msiSize = if (Test-Path $msiOutput) {
-    $sz = (Get-Item $msiOutput).Length
-    if ($sz -gt 1GB) { "$([math]::Round($sz / 1GB, 2)) GB" } else { "$([math]::Round($sz / 1MB, 1)) MB" }
-} else { "unknown" }
+function Test-PrerequisitePayloads {
+    if (-not (Test-Path $PrerequisitesConfigPath -PathType Leaf)) {
+        throw "Prerequisites config missing: $PrerequisitesConfigPath"
+    }
 
-$exeSize = if ($exeOutput -and (Test-Path $exeOutput)) {
-    $sz = (Get-Item $exeOutput).Length
-    if ($sz -gt 1GB) { "$([math]::Round($sz / 1GB, 2)) GB" } else { "$([math]::Round($sz / 1MB, 1)) MB" }
-} else { "N/A" }
+    $config = Get-Content -Raw $PrerequisitesConfigPath | ConvertFrom-Json
+    if (-not $config.prerequisites -or $config.prerequisites.Count -lt 1) {
+        throw "Prerequisites config must contain prerequisite entries."
+    }
+
+    Ensure-Directory $PrereqsDir
+    foreach ($pr in $config.prerequisites) {
+        foreach ($property in @("name", "fileName", "url", "sha256")) {
+            if (-not $pr.PSObject.Properties[$property] -or [string]::IsNullOrWhiteSpace([string]$pr.$property)) {
+                throw "Prerequisite entry missing required property '$property'."
+            }
+        }
+
+        if ($pr.sha256 -notmatch '^[A-Fa-f0-9]{64}$') {
+            throw "Prerequisite '$($pr.name)' has invalid SHA-256."
+        }
+
+        if ($pr.url -like "https://aka.ms/*" -or $pr.url -like "http://aka.ms/*") {
+            throw "Prerequisite '$($pr.name)' uses mutable aka.ms URL. Resolve and pin the immutable payload URL plus SHA-256."
+        }
+
+        $target = Join-Path $PrereqsDir $pr.fileName
+        if (-not (Test-Path $target) -and -not $SkipPrereqDownload) {
+            Invoke-WebRequest -Uri $pr.url -OutFile $target
+        }
+
+        if (-not (Test-Path $target) -or (Get-Item $target).Length -le 0) {
+            throw "Missing prerequisite payload: $target"
+        }
+
+        $actual = (Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant()
+        $expected = ([string]$pr.sha256).ToLowerInvariant()
+        if ($actual -ne $expected) {
+            throw "Prerequisite hash mismatch for '$($pr.name)'. Expected $expected, actual $actual."
+        }
+
+        $script:prerequisiteResults += [pscustomobject]@{
+            name = $pr.name
+            fileName = $pr.fileName
+            url = $pr.url
+            sha256 = $actual
+            verified = $true
+        }
+    }
+
+    $script:prerequisiteResults | ConvertTo-Json -Depth 8 | Set-Content -Path $PrerequisiteReportPath -Encoding UTF8
+}
+
+function Assert-ProductionPolicy([object[]]$ModelEntries) {
+    if ($BuildProfile -ne "Production") {
+        return
+    }
+
+    if ($mode -eq "full" -and @($ModelEntries | Where-Object { $_.type -eq "llm" }).Count -ne 1) {
+        throw "Production full mode requires a bundled LLM model."
+    }
+
+    if (@($ModelEntries | Where-Object { $_.type -eq "embedding" }).Count -ne 1) {
+        throw "Production installer requires exactly one embedding model."
+    }
+
+    foreach ($entry in $ModelEntries) {
+        if ($entry.sha256 -notmatch '^[a-f0-9]{64}$') {
+            throw "Production model entry missing required SHA-256: $($entry.filename)"
+        }
+    }
+}
+
+Write-Host ""
+Write-Host "===============================================" -ForegroundColor Cyan
+Write-Host "  Poseidon Authoritative WiX/Burn Build" -ForegroundColor Cyan
+Write-Host "  Configuration : $Configuration" -ForegroundColor Cyan
+Write-Host "  Build profile : $BuildProfile" -ForegroundColor Cyan
+Write-Host "  Mode          : $mode" -ForegroundColor Cyan
+Write-Host "  Models path   : $ModelsPath" -ForegroundColor Cyan
+Write-Host "===============================================" -ForegroundColor Cyan
+Write-Host ""
+
+Ensure-Directory $InstallerDir
+Reset-Directory $OutputDir
+Reset-Directory $GeneratedDir
+if (Test-Path $ObjDir) {
+    Remove-Item -Recurse -Force $ObjDir
+}
+
+if (-not $SkipPublish) {
+    Reset-Directory $PublishDir
+    Reset-Directory $ProvisioningPublishDir
+
+    dotnet publish $DesktopProj -c $Configuration -r win-x64 --self-contained true -o $PublishDir /p:PublishSingleFile=false
+    if ($LASTEXITCODE -ne 0) { throw "Desktop publish failed." }
+
+    dotnet publish $ProvisioningProj -c $Configuration -r win-x64 --self-contained true -o $ProvisioningPublishDir /p:PublishSingleFile=true
+    if ($LASTEXITCODE -ne 0) { throw "ProvisioningCheck publish failed." }
+}
+
+if (-not (Test-Path (Join-Path $PublishDir "Poseidon.Desktop.exe"))) {
+    throw "Poseidon.Desktop.exe missing from publish output: $PublishDir"
+}
+
+if (-not (Test-Path $ProvisioningExe)) {
+    throw "provisioning-check.exe missing from publish output: $ProvisioningExe"
+}
+
+$resolvedModels = Resolve-Path $ModelsPath -ErrorAction SilentlyContinue
+if (-not $resolvedModels) {
+    throw "Models directory not found: $ModelsPath"
+}
+$ModelsPath = $resolvedModels.Path
+
+$llmNames = @(
+    "qwen2.5-14b.Q5_K_M.gguf",
+    "Qwen_Qwen3.5-9B-Q5_K_M.gguf",
+    "Qwen3.5-9B-Q5_K_M.gguf"
+)
+
+$entries = @()
+$provenanceEntries = @()
+$llmModelFileName = ""
+if (-not $Degraded) {
+    $llmPath = Get-RequiredFile -Directory $ModelsPath -Names $llmNames -Label "LLM model"
+    Assert-ProductionModel -Path $llmPath -MinimumBytes $minimumLlmBytes -Label "LLM model"
+    $llmModelFileName = Split-Path $llmPath -Leaf
+    $entries += New-ModelEntry -SourcePath $llmPath -Type "llm" -Required $true
+    $provenanceEntries += New-ModelProvenanceEntry -SourcePath $llmPath -Type "llm"
+}
+
+$embeddingPath = Get-RequiredFile -Directory $ModelsPath -Names @("arabert.onnx") -Label "Embedding model"
+Assert-ProductionModel -Path $embeddingPath -MinimumBytes $minimumEmbeddingBytes -Label "Embedding model"
+$entries += New-ModelEntry -SourcePath $embeddingPath -Type "embedding" -Required $true
+$provenanceEntries += New-ModelProvenanceEntry -SourcePath $embeddingPath -Type "embedding"
+
+Assert-ProductionPolicy -ModelEntries $entries
+Test-PrerequisitePayloads
+Write-Manifest -ModelEntries $entries
+Write-MachineConfig -ModelEntries $entries
+Copy-StagedModels -ModelEntries $entries -ModelSources $provenanceEntries
+Write-BuildProvenance -ModelProvenanceEntries $provenanceEntries
+
+Invoke-ArtifactSigning -Artifacts @($ProvisioningExe)
+$signingResults | ConvertTo-Json -Depth 8 | Set-Content -Path $SigningReportPath -Encoding UTF8
+
+$checkArgs = @(
+    "--config", $MachineConfigPath,
+    "--manifest", $ModelManifestPath,
+    "--mode", $mode,
+    "--install-dir", $StagedInstallDir,
+    "--allow-deferred-secrets", "true",
+    "--log", (Join-Path $GeneratedDir "provisioning-check-build.log")
+)
+& $ProvisioningExe @checkArgs
+if ($LASTEXITCODE -ne 0) {
+    throw "Staged provisioning validation failed."
+}
+
+dotnet restore (Join-Path $InstallerDir "Poseidon.Installer.wixproj") --force
+if ($LASTEXITCODE -ne 0) { throw "WiX MSI restore failed." }
+dotnet restore (Join-Path $InstallerDir "Poseidon.Bundle.wixproj") --force
+if ($LASTEXITCODE -ne 0) { throw "WiX bundle restore failed." }
+
+$wixProps = @(
+    "/p:ModelsPath=$ModelsPath",
+    "/p:LlmModelFileName=$llmModelFileName",
+    "/p:ProvisioningCheckPath=$ProvisioningExe",
+    "/p:MachineConfigPath=$MachineConfigPath",
+    "/p:ModelManifestPath=$ModelManifestPath",
+    "/p:InstallerMode=$mode"
+)
+
+dotnet build (Join-Path $InstallerDir "Poseidon.Installer.wixproj") -t:Rebuild -c $Configuration -o $OutputDir @wixProps
+if ($LASTEXITCODE -ne 0) { throw "WiX MSI build failed." }
+
+dotnet build (Join-Path $InstallerDir "Poseidon.Bundle.wixproj") -t:Rebuild -c $Configuration -o $OutputDir @wixProps
+if ($LASTEXITCODE -ne 0) { throw "WiX Burn bundle build failed." }
+
+$msi = Get-ChildItem -Path $OutputDir -Filter "*.msi" -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+$bundle = Get-ChildItem -Path $OutputDir -Filter "*.exe" -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+
+if ($null -eq $msi) { throw "MSI artifact was not produced." }
+if ($null -eq $bundle) { throw "Burn bundle artifact was not produced." }
+
+$officialMsi = Join-Path $OutputDir "Poseidon.Installer.msi"
+$officialBundle = Join-Path $OutputDir "Poseidon.Bundle.exe"
+if (-not $msi.FullName.Equals($officialMsi, [StringComparison]::OrdinalIgnoreCase)) {
+    Copy-Item $msi.FullName $officialMsi -Force
+}
+if (-not $bundle.FullName.Equals($officialBundle, [StringComparison]::OrdinalIgnoreCase)) {
+    Copy-Item $bundle.FullName $officialBundle -Force
+}
+
+Invoke-ArtifactSigning -Artifacts @($officialMsi, $officialBundle)
+$signingResults | ConvertTo-Json -Depth 8 | Set-Content -Path $SigningReportPath -Encoding UTF8
+Write-BuildProvenance -ModelProvenanceEntries $provenanceEntries
+
+Copy-Item $ModelManifestPath (Join-Path $OutputDir "model-manifest.json") -Force
+Copy-Item $BuildProvenancePath (Join-Path $OutputDir "build-provenance.json") -Force
+Copy-Item $PrerequisiteReportPath (Join-Path $OutputDir "prerequisite-validation.json") -Force
+Copy-Item $SigningReportPath (Join-Path $OutputDir "signing-report.json") -Force
 
 Write-Host ""
 Write-Host "===============================================" -ForegroundColor Green
-Write-Host "  [OK] Installer build completed!"               -ForegroundColor Green
-Write-Host ""
-Write-Host "  MSI Output : $msiOutput"                       -ForegroundColor Green
-Write-Host "  MSI Size   : $msiSize"                         -ForegroundColor Green
-if (Test-Path $msiAliasOutput) {
-    Write-Host "  MSI Alias  : $msiAliasOutput"                  -ForegroundColor Green
-}
-if ($externalModelsMode) {
-    Write-Host "  Model Mode : external (not bundled)"       -ForegroundColor Yellow
-}
-if ($manifestOutput) {
-    Write-Host "  Manifest   : $manifestOutput"              -ForegroundColor Green
-}
-if ($exeOutput -and (Test-Path $exeOutput)) {
-    Write-Host "  EXE Output : $exeOutput"                   -ForegroundColor Green
-    Write-Host "  EXE Size   : $exeSize"                     -ForegroundColor Green
-    if (Test-Path $setupAliasOutput) {
-        Write-Host "  EXE Alias  : $setupAliasOutput"                -ForegroundColor Green
-    }
-}
-Write-Host ""
-$msiInstallPath = if (Test-Path $msiAliasOutput) { $msiAliasOutput } else { $msiOutput }
-$exeInstallPath = if (Test-Path $setupAliasOutput) { $setupAliasOutput } else { $exeOutput }
-Write-Host "  Install (MSI GUI)    : msiexec /i `"$msiInstallPath`""     -ForegroundColor White
-Write-Host "  Install (MSI silent) : msiexec /i `"$msiInstallPath`" /qn" -ForegroundColor White
-if ($exeInstallPath) {
-    Write-Host "  Install (EXE GUI)    : `"$exeInstallPath`""               -ForegroundColor White
-    Write-Host "  Install (EXE silent) : `"$exeInstallPath`" /quiet"        -ForegroundColor White
-}
+Write-Host "  Installer build completed" -ForegroundColor Green
+Write-Host "  MSI    : $officialMsi" -ForegroundColor Green
+Write-Host "  Bundle : $officialBundle" -ForegroundColor Green
+Write-Host "  Mode   : $mode" -ForegroundColor Green
+Write-Host "  Profile: $BuildProfile" -ForegroundColor Green
 Write-Host "===============================================" -ForegroundColor Green

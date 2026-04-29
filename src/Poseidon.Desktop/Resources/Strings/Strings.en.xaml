@@ -1,0 +1,124 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=mscorlib">
+
+    <!-- English UI Strings - Poseidon -->
+
+    <!-- App -->
+    <system:String x:Key="AppTitle">Poseidon</system:String>
+    <system:String x:Key="AppSubtitle">Evidence-constrained legal knowledge engine</system:String>
+
+    <!-- Navigation -->
+    <system:String x:Key="NavAsk">Legal Query</system:String>
+    <system:String x:Key="NavChat">Chat</system:String>
+    <system:String x:Key="NavDocuments">Document Management</system:String>
+    <system:String x:Key="NavSettings">Settings</system:String>
+    <system:String x:Key="NavHealth">System Health</system:String>
+
+    <!-- Ask View -->
+    <system:String x:Key="AskPlaceholder">Type your legal question here...</system:String>
+    <system:String x:Key="AskButton">Send Query</system:String>
+    <system:String x:Key="AskClear">Clear</system:String>
+    <system:String x:Key="AskStrictMode">Strict Mode</system:String>
+    <system:String x:Key="AskCaseNamespace">Case Namespace</system:String>
+    <system:String x:Key="AskCitations">Citations</system:String>
+    <system:String x:Key="AskConfidence">Confidence</system:String>
+    <system:String x:Key="AskAbstention">Abstained</system:String>
+    <system:String x:Key="AskAbstentionMsg">Not enough evidence was found in indexed documents to answer this question.</system:String>
+    <system:String x:Key="AskProcessing">Processing...</system:String>
+    <system:String x:Key="AskHistory">Query History</system:String>
+    <system:String x:Key="AskWarnings">Warnings</system:String>
+    <system:String x:Key="AskLlmUnavailable">Model unavailable - library-only mode</system:String>
+    <system:String x:Key="AskPage">Page</system:String>
+    <system:String x:Key="AskSimilarity">Similarity</system:String>
+
+    <!-- Documents View -->
+    <system:String x:Key="DocsTitle">Document Management</system:String>
+    <system:String x:Key="DocsDropZone">Drop PDF files here</system:String>
+    <system:String x:Key="DocsDropSubtext">or click to choose files</system:String>
+    <system:String x:Key="DocsBrowse">Choose Files</system:String>
+    <system:String x:Key="DocsIngestDir">Index Watch Directory</system:String>
+    <system:String x:Key="DocsOpenWatch">Open Watch Directory</system:String>
+    <system:String x:Key="DocsRefresh">Refresh</system:String>
+    <system:String x:Key="DocsTotal">Total Documents</system:String>
+    <system:String x:Key="DocsIndexed">Indexed</system:String>
+    <system:String x:Key="DocsPending">Pending</system:String>
+    <system:String x:Key="DocsFailed">Failed</system:String>
+    <system:String x:Key="DocsQuarantine">Quarantined</system:String>
+    <system:String x:Key="DocsVectors">Total Vectors</system:String>
+
+    <!-- Settings View -->
+    <system:String x:Key="SettingsTitle">Settings</system:String>
+    <system:String x:Key="SettingsSave">Save Settings</system:String>
+    <system:String x:Key="SettingsEncryption">Encryption</system:String>
+    <system:String x:Key="SettingsEncEnable">Enable Encryption</system:String>
+    <system:String x:Key="SettingsPassphrase">Passphrase</system:String>
+    <system:String x:Key="SettingsModel">Model</system:String>
+    <system:String x:Key="SettingsLlmPath">LLM Model Path</system:String>
+    <system:String x:Key="SettingsEmbPath">Embedding Model Path</system:String>
+    <system:String x:Key="SettingsGpu">GPU</system:String>
+    <system:String x:Key="SettingsGpuLayers">GPU Layers</system:String>
+    <system:String x:Key="SettingsContextSize">Context Size</system:String>
+    <system:String x:Key="SettingsRetrieval">Retrieval Settings</system:String>
+    <system:String x:Key="SettingsTopK">Top K Results</system:String>
+    <system:String x:Key="SettingsThreshold">Similarity Threshold</system:String>
+    <system:String x:Key="SettingsAbstention">Abstention Threshold</system:String>
+    <system:String x:Key="SettingsStrict">Strict Mode</system:String>
+    <system:String x:Key="SettingsDualPass">Dual-pass Validation</system:String>
+    <system:String x:Key="SettingsIngestion">Ingestion</system:String>
+    <system:String x:Key="SettingsWatchDir">Watch Directory</system:String>
+    <system:String x:Key="SettingsParallel">Parallel Files</system:String>
+    <system:String x:Key="SettingsDataDir">Data Directory</system:String>
+    <system:String x:Key="SettingsBrowse">Browse</system:String>
+    <system:String x:Key="SettingsRestart">Restart the application to apply changes</system:String>
+
+    <!-- Health View -->
+    <system:String x:Key="HealthTitle">System Health</system:String>
+    <system:String x:Key="HealthRefresh">Refresh</system:String>
+    <system:String x:Key="HealthLlm">Model Status</system:String>
+    <system:String x:Key="HealthGpu">GPU</system:String>
+    <system:String x:Key="HealthVectors">Vector Store</system:String>
+    <system:String x:Key="HealthDocs">Documents</system:String>
+    <system:String x:Key="HealthAudit">Audit Chain</system:String>
+    <system:String x:Key="HealthVerifyAudit">Verify Chain</system:String>
+    <system:String x:Key="HealthExportAudit">Export Audit Log</system:String>
+    <system:String x:Key="HealthMetrics">Metrics</system:String>
+    <system:String x:Key="HealthEncryption">Encryption Status</system:String>
+
+    <!-- Warnings -->
+    <system:String x:Key="EncryptionWarning">WARNING: Encryption is disabled. Document data is not protected. Enable encryption in Settings.</system:String>
+    <system:String x:Key="EncryptionEnable">Enable Now</system:String>
+    <system:String x:Key="ModelWarning">WARNING: Model unavailable - app is running in library-only mode.</system:String>
+
+    <!-- Status -->
+    <system:String x:Key="StatusReady">Ready</system:String>
+    <system:String x:Key="StatusProcessing">Processing</system:String>
+    <system:String x:Key="StatusVectors">Vectors</system:String>
+
+    <!-- Chat View -->
+    <system:String x:Key="ChatTitle">Legal Chat</system:String>
+    <system:String x:Key="ChatPlaceholder">Type your legal question here...</system:String>
+    <system:String x:Key="ChatSend">Send</system:String>
+    <system:String x:Key="ChatNewSession">New Chat</system:String>
+    <system:String x:Key="ChatYou">You</system:String>
+    <system:String x:Key="ChatAssistant">Legal Assistant</system:String>
+    <system:String x:Key="ChatSystem">System</system:String>
+    <system:String x:Key="ChatCitationCount">citation</system:String>
+    <system:String x:Key="ChatSearching">Searching indexed documents...</system:String>
+    <system:String x:Key="ChatGenerating">Generating answer...</system:String>
+    <system:String x:Key="ChatCaseNamespace">Case Namespace</system:String>
+    <system:String x:Key="ChatLibraryOnly">Chat is disabled until the system is fully operational.</system:String>
+
+    <!-- Fail-Closed Safety -->
+    <system:String x:Key="LibraryOnlyTitle">Library-only mode - legal querying disabled</system:String>
+    <system:String x:Key="LibraryOnlyDesc">You can browse and manage documents, but asking questions is disabled until the issue is resolved.</system:String>
+    <system:String x:Key="SafetyCritical">Critical safety warning - do not rely on this answer without independent verification.</system:String>
+    <system:String x:Key="SafetyWarning">Safety warnings present - verify sources before relying on this answer.</system:String>
+    <system:String x:Key="SafetyDisclaimer">Do not use this answer for legal decisions without independent review.</system:String>
+    <system:String x:Key="StrictModeLocked">Strict mode is always locked - evidence-constrained safety-critical system.</system:String>
+    <system:String x:Key="SystemBlockBanner">Library-only mode - legal querying is disabled for safety reasons</system:String>
+    <system:String x:Key="StatusLibraryOnly">Library-only mode</system:String>
+    <system:String x:Key="StatusDegraded">Running with warnings</system:String>
+
+</ResourceDictionary>
+

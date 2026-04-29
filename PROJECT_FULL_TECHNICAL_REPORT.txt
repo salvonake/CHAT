@@ -1,447 +1,57 @@
-LegalAI Project - Comprehensive Technical Report
-Generated: 2026-04-21
-Project Root: C:\LegalAI
-
-=================================================================
-1) Executive Summary
-=================================================================
-LegalAI is a multi-host .NET 8 solution for evidence-constrained question answering
-over private document corpora. The repository is organized into layered libraries
-(Domain, Application, Ingestion, Retrieval, Security, Infrastructure) and four host
-applications:
-
-- LegalAI.Api (JWT-protected web API)
-- LegalAI.WorkerService (Windows worker for file-based ingestion)
-- LegalAI.Desktop (WPF desktop shell with fail-closed guard and tray lifecycle)
-- LegalAI.Management.Api (fleet heartbeat and command control plane)
-
-Compared with older repository reports, the current codebase is materially more
-complete at host composition level: both API and Worker now include full DI wiring,
-storage registration, model provider selection, and startup initialization services.
-
-The system supports both local/offline paths (LLamaSharp + ONNX + embedded vectors)
-and service-backed paths (Ollama + Qdrant), with scope-aware isolation via
-domain/dataset/case namespace controls.
-
-=================================================================
-2) Solution Topology and Project Inventory
-=================================================================
-Solution file:
-- LegalAI.sln
-
-Source projects (src):
-1. LegalAI.Domain
-2. LegalAI.Application
-3. LegalAI.Ingestion
-4. LegalAI.Retrieval
-5. LegalAI.Security
-6. LegalAI.Infrastructure
-7. LegalAI.Api
-8. LegalAI.WorkerService
-9. LegalAI.Desktop
-10. LegalAI.Management.Api
-
-Test projects (tests):
-1. LegalAI.UnitTests
-2. LegalAI.IntegrationTests
-
-Installer and deployment assets:
-- installer/Package.wxs
-- installer/Bundle.wxs
-- installer/LegalAI.Installer.wixproj
-- installer/LegalAI.Bundle.wixproj
-- installer/build-installer.ps1
-- deploy/docker/docker-compose.yml
-
-Build/runtime controls:
-- global.json (.NET SDK 8.0.100, rollForward latestFeature)
-- Directory.Build.props (net8.0 defaults)
-- .github/workflows/ci.yml
-
-=================================================================
-3) Architecture Layers and Dependency Flow
-=================================================================
-Layered structure (logical):
-
-1. Domain Layer
-- Core entities, interfaces, value objects, domain module contracts
-- No host/framework-specific dependencies
-
-2. Application Layer
-- CQRS handlers via MediatR
-- Ingestion and question-answer orchestration
-- Uses domain abstractions, not infrastructure concretions
-
-3. Specialized Processing Layers
-- Ingestion: PDF extraction, chunking, embedding adapters
-- Retrieval: query analysis, hybrid retrieval, context assembly
-- Security: encryption and prompt-injection analysis
-
-4. Infrastructure Layer
-- Concrete implementations for:
-  - Vector stores (Qdrant, embedded)
-  - Data stores (SQLite doc/chat/identity/datasets/jobs)
-  - LLM connectors (Ollama, LLamaSharp)
-  - Telemetry and audit persistence
-
-5. Host Layer
-- API, worker service, desktop app, management API
-- Composition roots bind abstractions to concrete providers
-
-High-level dependency direction:
-Hosts -> Application/Domain abstractions -> Infrastructure implementations
-
-=================================================================
-4) Host Applications and Runtime Responsibilities
-=================================================================
-4.1 LegalAI.Api (src/LegalAI.Api)
-- ASP.NET Core Web API host
-- JWT authentication with role/policy authorization
-- Policies:
-  - CanRead: Viewer, Analyst, Admin
-  - CanQuery: Analyst, Admin
-  - CanIngest: Analyst, Admin
-- Registers retrieval, ingestion, stores, audit, metrics, prompt templates,
-  injection detector, domain registry, and startup services
-- Supports central management heartbeat publishing
-
-Controller surface (primary):
-- AskController
-- AuthController
-- ChatsController
-- DatasetsController
-- DocumentsController
-- IngestionJobsController
-- OpsController
-
-4.2 LegalAI.WorkerService (src/LegalAI.WorkerService)
-- .NET Worker with Windows service integration
-- Service name: LegalAI WorkerService
-- Watches configured PDF directory, queues events, ingests incrementally,
-  retries with backoff, quarantines persistent failures
-- Publishes heartbeat to management API and processes fleet commands
-
-4.3 LegalAI.Desktop (src/LegalAI.Desktop)
-- WPF WinExe host for local interactive operations
-- Single-instance enforcement (mutex + named pipe activation)
-- Fallback window activation if pipe signaling fails
-- Tray lifecycle with minimize-to-tray and restore/focus behavior
-- FailClosedGuard gates answer capability based on model/LLM/vector health
-- Startup setup wizard when local model assets are missing
-
-4.4 LegalAI.Management.Api (src/LegalAI.Management.Api)
-- Minimal API for instance heartbeat and command routing
-- In-memory state for instance status and command queues
-- Optional API-key authorization headers:
-  - X-Management-Key for operator actions
-  - X-Agent-Key for service agents
-
-=================================================================
-5) Integration Map (External Systems and Providers)
-=================================================================
-LLM providers:
-- Ollama (default in API/Worker appsettings)
-- LLamaSharp (default in Desktop appsettings)
-
-Embedding providers:
-- Ollama embeddings
-- ONNX Arabic embedding (desktop default)
-
-Vector storage providers:
-- Qdrant (default in API/Worker)
-- Embedded vector store (desktop default)
-
-Persistence:
-- SQLite stores for documents, jobs, chats, identity grants, audit, datasets
-
-Document extraction:
-- PdfPig-based extractor
-
-Management plane:
-- Central management heartbeat and command polling/ack
-
-Installer prerequisites:
-- VC++ Redistributable x64
-- .NET 8 Windows Desktop Runtime x64
-
-Containerized dependency:
-- Qdrant via Docker Compose (REST 6333, gRPC 6334)
-
-=================================================================
-6) Core Pipelines
-=================================================================
-6.1 Ask Pipeline
-Primary handler: AskLegalQuestionHandler
-
-Execution stages:
-1. Prompt injection analysis and optional block
-2. Query normalization + variant generation
-3. Hybrid retrieval via vector + optional lexical fusion
-4. Similarity-based abstention gate
-5. Evidence-constrained generation prompt assembly
-6. LLM generation
-7. Citation extraction and confidence scoring
-8. Optional strict-mode validation and regeneration
-9. Metrics + audit logging
-
-6.2 Retrieval Pipeline
-Primary class: LegalRetrievalPipeline
-
-Stages:
-1. Query analysis
-2. Variant embedding and vector search
-3. Optional BM25 score fusion
-4. Deduplication by content hash
-5. Top-K selection
-6. Context-budget packing with citation headers
-7. Short-term result cache
-
-6.3 Ingestion Pipeline
-Primary handler: IngestDocumentHandler
-
-Stages:
-1. File hash and duplicate short-circuit
-2. Upsert indexing state record
-3. PDF extraction
-4. Domain-aware chunking
-5. Batched embedding generation
-6. Vector upsert
-7. Document status finalization
-8. Retry/failure accounting and quarantine
-9. Metrics + audit events
-
-6.4 File Watcher Ingestion
-Worker:
-- Watches recursively for PDF changes
-- Debounces events
-- Priority queue processing in throttled batches
-- Exponential retry and quarantine workflow
-
-Desktop:
-- Similar watcher pattern for local interactive mode
-- Raises UI events for progress and ingestion status
-
-=================================================================
-7) Security and Access Control
-=================================================================
-Authentication and authorization:
-- JWT bearer auth in API
-- Role-based policies and endpoint attributes
-- Domain/dataset grants for non-admin users
-
-Model and prompt safety:
-- Prompt injection detector before retrieval/generation
-- Strict evidence-only system prompt behavior
-- Abstention behavior for insufficient evidence
-
-Data protection:
-- Configurable encryption service with passphrase-based setup
-- Audit persistence and integrity verification endpoints
-
-Operational caveat:
-- API default appsettings includes placeholder JWT signing key value; this
-  must be overridden in real deployments.
-
-=================================================================
-8) Desktop Reliability and Visibility Model
-=================================================================
-Single-instance model:
-- Mutex: Local\\LegalAI_LCDSS_SingleInstance
-- Activation named pipe: LegalAI_LCDSS_Activation
-
-Secondary launch behavior:
-1. Attempt named-pipe ACTIVATE message
-2. Fallback to existing window handle activation
-3. If both fail, user-facing background-running message
-
-Visibility lifecycle:
-- Minimize/close to tray configurable via appsettings
-- Tray icon context menu for reopen/exit
-- Foreground fallback notification when focus steal is blocked
-- Off-screen recovery logic to reposition window on visible displays
-
-Fail-closed behavior:
-- Guard checks model presence/integrity, LLM availability, vector health
-- Mode switches to library-only when blocking checks fail
-
-=================================================================
-9) Data and Runtime Path Strategy
-=================================================================
-API/Worker instance storage (default):
-- %LOCALAPPDATA%\\LegalAI\\Instances\\{instance}_{id}\\
-  - Data
-  - Logs
-  - Models
-  - Quarantine
-  - Pdfs (watch dir default)
-
-Desktop storage (default):
-- %LOCALAPPDATA%\\LegalAI\\
-  - Models
-  - Logs
-  - Watch
-  - vectors.db, hnsw.index, documents.db, audit.db
-
-Notable implication:
-- API/Worker are instance-scoped by default.
-- Desktop uses a separate per-user root path strategy.
-
-=================================================================
-10) Installer and Packaging Architecture
-=================================================================
-Packaging model:
-- WiX v5 MSI + Burn bootstrapper EXE
-
-MSI (Package.wxs):
-- Per-machine install to Program Files\\LegalAI
-- Feature tree includes core app and model artifacts
-- Creates desktop and start menu shortcuts
-- Writes install metadata under HKLM\\Software\\LegalAI
-
-Bootstrapper (Bundle.wxs):
-- Chains VC++ redistributable and .NET desktop runtime checks
-- Embeds MSI package
-- Supports quiet/passive installs
-
-Build script (installer/build-installer.ps1):
-- Publishes desktop self-contained win-x64
-- Handles model staging and validation
-- Supports external-model mode with hash manifest generation
-- Produces output aliases:
-  - installer/output/LegalAI.Setup.msi
-  - installer/output/Setup.exe
-
-Known packaging noise:
-- HEAT5151 warnings are expected in current build flow and are warning-only.
-
-=================================================================
-11) CI/CD and Quality Gates
-=================================================================
-CI workflow:
-- Unit tests on Windows with coverage gating
-- Integration tests on Ubuntu with Qdrant service container
-- Optional ONNX integration tests when model URL secret is set
-- Readiness Gate aggregates required job outcomes
-- Workflow concurrency enabled with cancel-in-progress
-
-Coverage policy:
-- Standard and strict threshold modes via repository variables
-- Cobertura reports uploaded as artifacts
-
-Local test orchestration:
-- tests/scripts includes unit, integration, and all-tests runner scripts
-
-=================================================================
-12) Configuration Surface Summary
-=================================================================
-API appsettings highlights:
-- Instance identity
-- Storage root override
-- Provider selection (vector/LLM/embedding)
-- Auth JWT issuer/audience/signing key
-- Central management heartbeat settings
-
-Worker appsettings highlights:
-- Same provider and storage model as API
-- Data watch/quarantine paths
-- Central management heartbeat settings
-
-Desktop appsettings highlights:
-- UI culture and tray behavior defaults
-- Desktop-local provider defaults (LLamaSharp + ONNX + embedded vectors)
-- Retrieval thresholds and strict mode
-- Model integrity hash checks and startup self-test toggle
-
-Management API appsettings highlights:
-- Optional management and agent API keys
-
-=================================================================
-13) Current-State Strengths
-=================================================================
-1. Clear layered decomposition with practical host composition roots.
-2. Strong evidence-constrained retrieval/generation pipeline design.
-3. Scope-aware controls (domain/dataset/case namespace).
-4. Multiple deployment modes (desktop local, API+worker service).
-5. Central management telemetry/control channel for fleet operations.
-6. Installer chain includes prerequisite provisioning and silent modes.
-7. CI pipeline includes readiness gating and integration coverage.
-8. Desktop reliability hardening for single-instance and tray restoration.
-
-=================================================================
-14) Risks and Gaps (Current Snapshot)
-=================================================================
-1. Documentation drift:
-   - README architecture still references a React frontend, while active UI is
-     currently WPF desktop in this repository.
-
-2. Security baseline risk:
-   - Placeholder JWT signing key in API appsettings must never ship unchanged.
-
-3. Management API durability:
-   - Instance and command state is in-memory only; restarts drop state.
-
-4. Config divergence risk:
-   - Desktop defaults differ from API/Worker provider defaults by design;
-     deployment docs should make mode-specific expectations explicit.
-
-5. Packaging signal-to-noise:
-   - HEAT5151 warning volume can obscure actionable installer issues.
-
-=================================================================
-15) Recommended Next Actions
-=================================================================
-1. Align documentation with actual host/runtime reality:
-   - Update README architecture section to include WPF Desktop and Management API.
-
-2. Harden production configuration policy:
-   - Enforce non-placeholder JWT key and secure secret injection at startup.
-
-3. Add persistence to management control plane:
-   - Persist heartbeats and command states in durable storage.
-
-4. Publish deployment profiles explicitly:
-   - Profile A: Desktop-only local mode
-   - Profile B: API + Worker + Qdrant + optional Management API
-
-5. Reduce installer warning noise:
-   - Filter known non-actionable heat warnings or adjust harvesting inputs.
-
-6. Expand E2E validation:
-   - Add scenario tests spanning ingest -> retrieve -> answer -> audit verification.
-
-=================================================================
-16) Appendix - Key File Index
-=================================================================
-Core manifests:
-- LegalAI.sln
-- global.json
-- Directory.Build.props
-
-Host entrypoints:
-- src/LegalAI.Api/Program.cs
-- src/LegalAI.WorkerService/Program.cs
-- src/LegalAI.Desktop/App.xaml.cs
-- src/LegalAI.Management.Api/Program.cs
-
-Primary pipeline files:
-- src/LegalAI.Application/Queries/AskLegalQuestionHandler.cs
-- src/LegalAI.Application/Commands/IngestDocumentCommand.cs
-- src/LegalAI.Retrieval/Pipeline/LegalRetrievalPipeline.cs
-- src/LegalAI.WorkerService/FileWatcherService.cs
-- src/LegalAI.Desktop/Services/DesktopFileWatcherService.cs
-
-Security and runtime guards:
-- src/LegalAI.Desktop/Services/FailClosedGuard.cs
-- src/LegalAI.Desktop/Services/ModelIntegrityService.cs
-- src/LegalAI.Api/Security/JwtTokenService.cs
-
-Installer and deployment:
-- installer/Package.wxs
-- installer/Bundle.wxs
-- installer/build-installer.ps1
-- deploy/docker/docker-compose.yml
-
-CI:
-- .github/workflows/ci.yml
-
-End of report.
+Poseidon (LCDSS) Technical Report
+Generated: 2026-04-28
+Repository Root: current workspace
+
+1. Executive Summary
+
+Poseidon is a production-oriented .NET 8 Windows desktop legal decision support platform. The current architecture is Poseidon-only and is centered on a WPF desktop host, layered domain/application services, local and service-backed AI providers, deterministic provisioning, runtime diagnostics, and an enterprise WiX/Burn installer.
+
+2. Solution Topology
+
+Solution:
+- Poseidon.sln
+
+Source projects:
+- Poseidon.Domain
+- Poseidon.Application
+- Poseidon.Ingestion
+- Poseidon.Retrieval
+- Poseidon.Security
+- Poseidon.Infrastructure
+- Poseidon.Api
+- Poseidon.WorkerService
+- Poseidon.Desktop
+- Poseidon.Management.Api
+- Poseidon.ProvisioningCheck
+
+Test projects:
+- Poseidon.UnitTests
+- Poseidon.IntegrationTests
+
+3. Runtime Architecture
+
+Poseidon.Desktop is the primary production UX. Startup initializes configuration and logging, evaluates provisioning state before hosted services start, launches the setup wizard when required, reloads runtime configuration after provisioning, validates model/provider state, and transitions deterministically into Full, Degraded, or Recovery mode.
+
+Poseidon.Api provides JWT-secured legal query and document endpoints. Poseidon.WorkerService handles watched-folder ingestion. Poseidon.Management.Api provides signed management-plane heartbeat and command workflows. Poseidon.ProvisioningCheck validates installer and runtime provisioning contracts.
+
+4. Installer Architecture
+
+WiX MSI plus Burn bundle is the single authoritative enterprise installer path:
+- Poseidon.Installer.msi
+- Poseidon.Bundle.exe
+
+The installer publishes Desktop and ProvisioningCheck, writes machine config, deploys model assets, emits a schema-versioned model manifest, validates SHA-256 hashes, runs post-install provisioning-check, and fails install success on provisioning failure.
+
+5. Security Architecture
+
+Production config validation is fail-closed. Placeholder JWT secrets, weak secrets, empty management keys, missing DPAPI references, disabled encryption, invalid model hashes, and user attempts to override trusted policy are rejected. Production secrets are referenced through protected storage identifiers, with DPAPI-backed resolution at runtime.
+
+Management-plane requests support signed timestamp/nonce headers and audit logging of auth failures without leaking secret values. Production installer builds require signed artifacts and validated provenance.
+
+6. Build and CI
+
+SDK and package versions are pinned. CI runs repository hygiene validation, unit tests, Qdrant integration tests, optional ONNX integration tests, WiX/Burn installer validation, provisioning-check, manifest tamper checks, silent MSI/Burn install smoke tests, repair smoke tests, and readiness gating.
+
+7. Consolidation Status
+
+Legacy predecessor source, test, and installer paths have been decommissioned in favor of the Poseidon-only build graph and documentation. Repository hygiene policy blocks reintroduction of active legacy references, floating package versions, Docker latest tags, and destructive setup scripts.

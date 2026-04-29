@@ -1,0 +1,827 @@
+﻿<Window x:Class="Poseidon.Desktop.Views.SetupWizardWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Poseidon Setup Wizard — LCDSS"
+        Height="680" Width="820"
+        MinHeight="580" MinWidth="700"
+        WindowStartupLocation="CenterScreen"
+        FlowDirection="LeftToRight"
+        ResizeMode="CanResize"
+        Background="{DynamicResource BackgroundBrush}">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <!-- Step visibility converters using DataTriggers -->
+        <Style x:Key="StepPanel" TargetType="StackPanel">
+            <Setter Property="Visibility" Value="Collapsed"/>
+        </Style>
+
+        <!-- Radio button style -->
+        <Style x:Key="WizardRadio" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource ArabicFont}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Margin" Value="0,6"/>
+            <Setter Property="Padding" Value="8,2"/>
+        </Style>
+
+        <!-- Section label -->
+        <Style x:Key="WizardLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+            <Setter Property="FontFamily" Value="{DynamicResource ArabicFont}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Margin" Value="0,12,0,4"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ══════════════════════════════════════════
+             Header
+             ══════════════════════════════════════════ -->
+        <Border Grid.Row="0"
+                Background="{DynamicResource PrimaryBrush}"
+                Padding="24,18">
+            <StackPanel>
+                <TextBlock Text="⚖️ LCDSS — Setup Wizard"
+                           FontSize="20" FontWeight="Bold"
+                           Foreground="{DynamicResource AccentBrush}"
+                           FontFamily="{DynamicResource ArabicFont}"/>
+                <TextBlock Text="{Binding StepTitle}"
+                           FontSize="14"
+                           Foreground="{DynamicResource TextSecondaryBrush}"
+                           FontFamily="{DynamicResource ArabicFont}"
+                           Margin="0,4,0,0"/>
+
+                <Grid Margin="0,14,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0" CornerRadius="12" Padding="8,4" Margin="0,0,6,0">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="0">
+                                        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="1. Welcome" HorizontalAlignment="Center"/>
+                    </Border>
+
+                    <Border Grid.Column="1" CornerRadius="12" Padding="8,4" Margin="0,0,6,0">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="1">
+                                        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="2. Domain" HorizontalAlignment="Center"/>
+                    </Border>
+
+                    <Border Grid.Column="2" CornerRadius="12" Padding="8,4" Margin="0,0,6,0">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="2">
+                                        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="3. LLM" HorizontalAlignment="Center"/>
+                    </Border>
+
+                    <Border Grid.Column="3" CornerRadius="12" Padding="8,4" Margin="0,0,6,0">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                                        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="4. Embedding" HorizontalAlignment="Center"/>
+                    </Border>
+
+                    <Border Grid.Column="4" CornerRadius="12" Padding="8,4" Margin="0,0,6,0">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="5. Install" HorizontalAlignment="Center"/>
+                    </Border>
+
+                    <Border Grid.Column="5" CornerRadius="12" Padding="8,4">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                                <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CurrentStep}" Value="5">
+                                        <Setter Property="Background" Value="{DynamicResource AccentBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="6. Complete" HorizontalAlignment="Center"/>
+                    </Border>
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <!-- ══════════════════════════════════════════
+             Step Content
+             ══════════════════════════════════════════ -->
+        <ScrollViewer Grid.Row="1"
+                      VerticalScrollBarVisibility="Auto"
+                      Padding="32,24">
+
+            <Grid>
+                <!-- ════ Step 0: Welcome ════ -->
+                <StackPanel x:Name="StepWelcome">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <TextBlock Text="Welcome to Poseidon"
+                               Style="{DynamicResource SectionHeader}"
+                               FontSize="18"
+                               Margin="0,0,0,8"/>
+
+                    <TextBlock TextWrapping="Wrap"
+                               Style="{DynamicResource BodyText}"
+                               Margin="0,0,0,20">
+                        This wizard helps you configure the models required to run the system.
+                        The system needs a language model (LLM) for legal answers
+                        and an embedding model for semantic document retrieval.
+                    </TextBlock>
+
+                    <Border Style="{DynamicResource Card}" Margin="0,0,0,16" Padding="16">
+                        <StackPanel>
+                            <TextBlock Text="Choose runtime mode:"
+                                       Style="{DynamicResource SectionHeader}"
+                                       Margin="0,0,0,12"/>
+
+                            <RadioButton Style="{StaticResource WizardRadio}"
+                                         IsChecked="{Binding UseLlamaSharp}"
+                                         GroupName="Provider">
+                                <StackPanel>
+                                    <TextBlock Text="📥 Local models (LLamaSharp + ONNX)"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                    <TextBlock Text="Fully offline runtime after setup. Requires model files."
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               FontSize="12"
+                                               Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </RadioButton>
+
+                            <RadioButton Style="{StaticResource WizardRadio}"
+                                         IsChecked="{Binding UseOllama}"
+                                         GroupName="Provider">
+                                <StackPanel>
+                                    <TextBlock Text="🌐 Ollama server"
+                                               FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextPrimaryBrush}"/>
+                                    <TextBlock Text="Requires a running Ollama server. Best when models are shared across apps."
+                                               TextWrapping="Wrap"
+                                               Foreground="{DynamicResource TextSecondaryBrush}"
+                                               FontSize="12"
+                                               Margin="0,2,0,0"/>
+                                </StackPanel>
+                            </RadioButton>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Background="{DynamicResource WarningBannerBrush}"
+                            CornerRadius="6" Padding="14,10" Margin="0,8,0,0">
+                        <TextBlock TextWrapping="Wrap"
+                                   Foreground="{DynamicResource WarningBrush}"
+                                   FontFamily="{DynamicResource ArabicFont}"
+                                   FontSize="12">
+                            ⚠ Note: the default language model (Qwen 2.5 14B) needs about 10 GB disk space
+                            and at least 16 GB RAM. Ensure enough resources before continuing.
+                        </TextBlock>
+                    </Border>
+
+                    <Border Margin="0,16,0,0" Padding="16">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding UseLlamaSharp}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel>
+                            <TextBlock Text="📁 Select models folder (one-time)"
+                                       Style="{DynamicResource SectionHeader}"
+                                       Margin="0,0,0,8"/>
+                            <TextBlock Text="If models are already present, select the folder and GGUF/ONNX files will be auto-detected."
+                                       Style="{DynamicResource BodyText}"
+                                       TextWrapping="Wrap"
+                                       Margin="0,0,0,12"/>
+                            <Button Content="Select models folder"
+                                    Command="{Binding PickModelsFolderCommand}"
+                                    Style="{DynamicResource SecondaryButton}"
+                                    Padding="16,8"
+                                    HorizontalAlignment="Left"
+                                    MinWidth="180"/>
+                            <TextBlock Text="{Binding ModelFolderStatusMessage}"
+                                       Margin="0,10,0,0"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Margin="0,16,0,0" Padding="16">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource Card}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding UseOllama}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <StackPanel>
+                            <TextBlock Text="⚙ Ollama setup (optional)"
+                                       Style="{DynamicResource SectionHeader}"
+                                       Margin="0,0,0,8"/>
+
+                            <TextBlock Text="If Ollama is not installed, install it first, then test connectivity."
+                                       TextWrapping="Wrap"
+                                       Style="{DynamicResource BodyText}"
+                                       Margin="0,0,0,12"/>
+
+                            <TextBlock Style="{StaticResource WizardLabel}" Text="Ollama server URL:"/>
+                            <TextBox Text="{Binding OllamaUrl, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource ArabicTextBox}"
+                                     FlowDirection="LeftToRight"
+                                     Margin="0,0,0,8"/>
+
+                            <TextBlock Style="{StaticResource WizardLabel}" Text="Ollama LLM model:"/>
+                            <TextBox Text="{Binding OllamaLlmModel, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource ArabicTextBox}"
+                                     FlowDirection="LeftToRight"
+                                     Margin="0,0,0,8"/>
+
+                            <TextBlock Style="{StaticResource WizardLabel}" Text="Ollama embedding model:"/>
+                            <TextBox Text="{Binding OllamaEmbeddingModel, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource ArabicTextBox}"
+                                     FlowDirection="LeftToRight"
+                                     Margin="0,0,0,12"/>
+
+                            <StackPanel Orientation="Horizontal">
+                                <Button Content="Test connection"
+                                        Command="{Binding TestOllamaCommand}"
+                                        Style="{DynamicResource SecondaryButton}"
+                                        Padding="16,8"
+                                        Margin="0,0,8,0"/>
+                                <Button Content="Download Ollama"
+                                        Command="{Binding OpenOllamaDownloadPageCommand}"
+                                        Style="{DynamicResource SecondaryButton}"
+                                        Padding="16,8"/>
+                            </StackPanel>
+
+                            <TextBlock Text="{Binding OllamaStatusMessage}"
+                                       Margin="0,10,0,0"
+                                       TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ════ Step 1: Domain Selection ════ -->
+                <StackPanel x:Name="StepDomain">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="1">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <TextBlock Text="Choose domain module"
+                               Style="{DynamicResource SectionHeader}"
+                               FontSize="18"
+                               Margin="0,0,0,8"/>
+
+                    <TextBlock TextWrapping="Wrap"
+                               Style="{DynamicResource BodyText}"
+                               Margin="0,0,0,16">
+                        Choose the domain that controls processing rules, chunking, templates, and validation.
+                        You can select a built-in domain or provide a custom domain ID.
+                    </TextBlock>
+
+                    <Border Style="{DynamicResource Card}" Padding="16">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource WizardLabel}" Text="Active domain:"/>
+                            <ComboBox SelectedValuePath="Tag"
+                                      SelectedValue="{Binding SelectedDomainId, UpdateSourceTrigger=PropertyChanged}"
+                                      Margin="0,4,0,0"
+                                      MinWidth="280"
+                                      HorizontalAlignment="Left">
+                                <ComboBoxItem Tag="legal" Content="Legal"/>
+                                <ComboBoxItem Tag="medical" Content="Medical"/>
+                                <ComboBoxItem Tag="finance" Content="Finance"/>
+                                <ComboBoxItem Tag="hr" Content="HR"/>
+                                <ComboBoxItem Tag="generic" Content="Generic"/>
+                                <ComboBoxItem Tag="custom" Content="Custom Domain"/>
+                            </ComboBox>
+
+                            <StackPanel Visibility="{Binding IsCustomDomain, Converter={StaticResource BoolToVis}}"
+                                        Margin="0,12,0,0">
+                                <TextBlock Style="{StaticResource WizardLabel}" Text="Custom domain ID:"/>
+                                <TextBox Text="{Binding CustomDomainId, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{DynamicResource ArabicTextBox}"
+                                         FlowDirection="LeftToRight"
+                                         MaxWidth="360"
+                                         HorizontalAlignment="Left"/>
+                                <TextBlock Text="Example: research, enterprise-kb, pharma"
+                                           Foreground="{DynamicResource TextSecondaryBrush}"
+                                           FontSize="12"
+                                           FlowDirection="LeftToRight"
+                                           Margin="0,6,0,0"/>
+                            </StackPanel>
+
+                            <TextBlock Text="{Binding DomainStatusMessage}"
+                                       Foreground="{DynamicResource WarningBrush}"
+                                       Margin="0,12,0,0"
+                                       TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ════ Step 2: LLM Model ════ -->
+                <StackPanel x:Name="StepLlm">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="2">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <TextBlock Text="Configure language model (LLM)"
+                               Style="{DynamicResource SectionHeader}"
+                               FontSize="18"
+                               Margin="0,0,0,8"/>
+
+                    <TextBlock TextWrapping="Wrap"
+                               Style="{DynamicResource BodyText}"
+                               Margin="0,0,0,16">
+                        Choose the source for the GGUF language model file.
+                        Use either a local file or a download URL.
+                    </TextBlock>
+
+                    <Border Style="{DynamicResource Card}" Padding="16">
+                        <StackPanel>
+                            <!-- Browse option -->
+                            <RadioButton Style="{StaticResource WizardRadio}"
+                                         IsChecked="{Binding LlmBrowseLocal}"
+                                         GroupName="LlmSource">
+                                <TextBlock Text="📂 Use local file (pre-copied or network share)"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            </RadioButton>
+
+                            <StackPanel Margin="28,0,0,12"
+                                        Visibility="{Binding LlmBrowseLocal, Converter={StaticResource BoolToVis}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0"
+                                             Text="{Binding LlmLocalPath, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{DynamicResource ArabicTextBox}"
+                                             FlowDirection="LeftToRight"
+                                             Margin="0,0,8,0"/>
+                                    <Button Grid.Column="1"
+                                            Content="Browse..."
+                                            Command="{Binding BrowseLlmModelCommand}"
+                                            Style="{DynamicResource SecondaryButton}"
+                                            Padding="16,8"
+                                            MinWidth="100"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- Download option -->
+                            <RadioButton Style="{StaticResource WizardRadio}"
+                                         IsChecked="{Binding LlmDownloadUrl}"
+                                         GroupName="LlmSource">
+                                <TextBlock Text="⬇️ Download from URL (Hugging Face or internal server)"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            </RadioButton>
+
+                            <StackPanel Margin="28,0,0,12"
+                                        Visibility="{Binding LlmDownloadUrl, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Style="{StaticResource WizardLabel}"
+                                           Text="Download URL:"/>
+                                <TextBox Text="{Binding LlmDownloadUrlText, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{DynamicResource ArabicTextBox}"
+                                         FlowDirection="LeftToRight"/>
+                            </StackPanel>
+
+                            <!-- Model filename -->
+                            <TextBlock Style="{StaticResource WizardLabel}"
+                                       Text="Model file name (inside models folder):"/>
+                            <TextBox Text="{Binding LlmModelFileName, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource ArabicTextBox}"
+                                     FlowDirection="LeftToRight"
+                                     MaxWidth="400"
+                                     HorizontalAlignment="Left"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Status message -->
+                    <TextBlock Text="{Binding LlmStatusMessage}"
+                               FontFamily="{DynamicResource ArabicFont}"
+                               FontSize="13"
+                               Margin="0,12,0,0"
+                               TextWrapping="Wrap">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding LlmStatusMessage}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- ════ Step 3: Embedding Model ════ -->
+                <StackPanel x:Name="StepEmbedding">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="3">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <TextBlock Text="Configure embedding model"
+                               Style="{DynamicResource SectionHeader}"
+                               FontSize="18"
+                               Margin="0,0,0,8"/>
+
+                    <TextBlock TextWrapping="Wrap"
+                               Style="{DynamicResource BodyText}"
+                               Margin="0,0,0,16">
+                        Choose the source for the ONNX embedding model file.
+                        This model converts text into vectors for semantic retrieval.
+                    </TextBlock>
+
+                    <Border Style="{DynamicResource Card}" Padding="16">
+                        <StackPanel>
+                            <!-- Browse option -->
+                            <RadioButton Style="{StaticResource WizardRadio}"
+                                         IsChecked="{Binding EmbBrowseLocal}"
+                                         GroupName="EmbSource">
+                                <TextBlock Text="📂 Use local file"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            </RadioButton>
+
+                            <StackPanel Margin="28,0,0,12"
+                                        Visibility="{Binding EmbBrowseLocal, Converter={StaticResource BoolToVis}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0"
+                                             Text="{Binding EmbLocalPath, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{DynamicResource ArabicTextBox}"
+                                             FlowDirection="LeftToRight"
+                                             Margin="0,0,8,0"/>
+                                    <Button Grid.Column="1"
+                                            Content="Browse..."
+                                            Command="{Binding BrowseEmbeddingModelCommand}"
+                                            Style="{DynamicResource SecondaryButton}"
+                                            Padding="16,8"
+                                            MinWidth="100"/>
+                                </Grid>
+                            </StackPanel>
+
+                            <!-- Download option -->
+                            <RadioButton Style="{StaticResource WizardRadio}"
+                                         IsChecked="{Binding EmbDownloadUrl}"
+                                         GroupName="EmbSource">
+                                <TextBlock Text="⬇️ Download from URL"
+                                           Foreground="{DynamicResource TextPrimaryBrush}"/>
+                            </RadioButton>
+
+                            <StackPanel Margin="28,0,0,12"
+                                        Visibility="{Binding EmbDownloadUrl, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Style="{StaticResource WizardLabel}"
+                                           Text="Download URL:"/>
+                                <TextBox Text="{Binding EmbDownloadUrlText, UpdateSourceTrigger=PropertyChanged}"
+                                         Style="{DynamicResource ArabicTextBox}"
+                                         FlowDirection="LeftToRight"/>
+                            </StackPanel>
+
+                            <!-- Model filename -->
+                            <TextBlock Style="{StaticResource WizardLabel}"
+                                       Text="Model file name:"/>
+                            <TextBox Text="{Binding EmbModelFileName, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{DynamicResource ArabicTextBox}"
+                                     FlowDirection="LeftToRight"
+                                     MaxWidth="400"
+                                     HorizontalAlignment="Left"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Status message -->
+                    <TextBlock Text="{Binding EmbStatusMessage}"
+                               FontFamily="{DynamicResource ArabicFont}"
+                               FontSize="13"
+                               Margin="0,12,0,0"
+                               TextWrapping="Wrap">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding EmbStatusMessage}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+
+                <!-- ════ Step 4: Progress ════ -->
+                <StackPanel x:Name="StepProgress">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <TextBlock Text="Setting up models..."
+                               Style="{DynamicResource SectionHeader}"
+                               FontSize="18"
+                               Margin="0,0,0,24"/>
+
+                    <!-- Overall progress -->
+                    <TextBlock Text="Overall progress"
+                               Style="{StaticResource WizardLabel}"/>
+                    <ProgressBar Value="{Binding OverallProgress}"
+                                 Maximum="1"
+                                 Height="8"
+                                 Style="{DynamicResource IngestionProgress}"
+                                 Margin="0,4,0,16"/>
+
+                    <!-- Current file progress -->
+                    <TextBlock Text="{Binding ProgressStatusText}"
+                               Style="{DynamicResource BodyText}"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,8"/>
+
+                    <ProgressBar Value="{Binding CurrentFileProgress}"
+                                 Maximum="1"
+                                 Height="14"
+                                 Style="{DynamicResource IngestionProgress}"
+                                 Margin="0,0,0,8"/>
+
+                    <TextBlock Text="{Binding ProgressDetailText}"
+                               Foreground="{DynamicResource TextSecondaryBrush}"
+                               FontFamily="{DynamicResource ArabicFont}"
+                               FontSize="12"
+                               FlowDirection="LeftToRight"
+                               HorizontalAlignment="Left"/>
+
+                    <!-- Cancel button during processing -->
+                    <Button Content="Cancel"
+                            Command="{Binding CancelCommand}"
+                            Style="{DynamicResource SecondaryButton}"
+                            HorizontalAlignment="Left"
+                            Margin="0,24,0,0"
+                            Padding="24,10"
+                            Visibility="{Binding CanCancel, Converter={StaticResource BoolToVis}}"/>
+                </StackPanel>
+
+                <!-- ════ Step 5: Complete ════ -->
+                <StackPanel x:Name="StepComplete">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="5">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
+                    <!-- Success icon -->
+                    <TextBlock FontSize="48"
+                               HorizontalAlignment="Center"
+                               Margin="0,16,0,16">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="❌"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SetupSucceeded}" Value="True">
+                                        <Setter Property="Text" Value="✅"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <TextBlock Text="{Binding CompletionMessage}"
+                               Style="{DynamicResource BodyText}"
+                               FontSize="16"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap"
+                               Margin="0,0,0,16"/>
+
+                    <!-- Error details if any -->
+                    <Border Background="{DynamicResource SurfaceLightBrush}"
+                            CornerRadius="6"
+                            Padding="16"
+                            Margin="0,8,0,0">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ErrorDetails}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding ErrorDetails}"
+                                   FontFamily="{DynamicResource MonoFont}"
+                                   Foreground="{DynamicResource DangerBrush}"
+                                   FlowDirection="LeftToRight"
+                                   TextWrapping="Wrap"
+                                   FontSize="12"/>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+
+        <!-- ══════════════════════════════════════════
+             Footer Navigation Buttons
+             ══════════════════════════════════════════ -->
+        <Border Grid.Row="2"
+                Background="{DynamicResource PrimaryBrush}"
+                Padding="24,14"
+                BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="0,1,0,0">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Cancel -->
+                <Button Grid.Column="0"
+                        Content="Cancel"
+                        Command="{Binding CancelCommand}"
+                        Padding="20,10"
+                        MinWidth="90">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="5">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
+                <!-- Back -->
+                <Button Grid.Column="2"
+                        Content="← Back"
+                        Command="{Binding PreviousStepCommand}"
+                        Padding="20,10"
+                        MinWidth="90"
+                        Margin="0,0,8,0">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="0">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="5">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
+                <!-- Next -->
+                <Button Grid.Column="3"
+                        Content="Next →"
+                        Command="{Binding NextStepCommand}"
+                        Padding="20,10"
+                        MinWidth="120">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="4">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="5">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
+                <!-- Finish (only on Step 4) -->
+                <Button Grid.Column="3"
+                        Content="Finish"
+                        Command="{Binding FinishCommand}"
+                        Padding="20,10"
+                        MinWidth="120">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CurrentStep}" Value="5">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
+
+
+

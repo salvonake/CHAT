@@ -1,0 +1,123 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:system="clr-namespace:System;assembly=mscorlib">
+
+    <!-- French UI Strings - Poseidon -->
+
+    <!-- App -->
+    <system:String x:Key="AppTitle">Poseidon</system:String>
+    <system:String x:Key="AppSubtitle">Moteur juridique fonde sur des preuves</system:String>
+
+    <!-- Navigation -->
+    <system:String x:Key="NavAsk">Question juridique</system:String>
+    <system:String x:Key="NavChat">Discussion</system:String>
+    <system:String x:Key="NavDocuments">Gestion des documents</system:String>
+    <system:String x:Key="NavSettings">Parametres</system:String>
+    <system:String x:Key="NavHealth">Sante du systeme</system:String>
+
+    <!-- Ask View -->
+    <system:String x:Key="AskPlaceholder">Saisissez votre question juridique...</system:String>
+    <system:String x:Key="AskButton">Envoyer la question</system:String>
+    <system:String x:Key="AskClear">Effacer</system:String>
+    <system:String x:Key="AskStrictMode">Mode strict</system:String>
+    <system:String x:Key="AskCaseNamespace">Espace de cas</system:String>
+    <system:String x:Key="AskCitations">Citations</system:String>
+    <system:String x:Key="AskConfidence">Confiance</system:String>
+    <system:String x:Key="AskAbstention">Abstention</system:String>
+    <system:String x:Key="AskAbstentionMsg">Preuves insuffisantes dans les documents indexes pour repondre a cette question.</system:String>
+    <system:String x:Key="AskProcessing">Traitement en cours...</system:String>
+    <system:String x:Key="AskHistory">Historique des questions</system:String>
+    <system:String x:Key="AskWarnings">Avertissements</system:String>
+    <system:String x:Key="AskLlmUnavailable">Modele indisponible - mode bibliotheque uniquement</system:String>
+    <system:String x:Key="AskPage">Page</system:String>
+    <system:String x:Key="AskSimilarity">Similarite</system:String>
+
+    <!-- Documents View -->
+    <system:String x:Key="DocsTitle">Gestion des documents</system:String>
+    <system:String x:Key="DocsDropZone">Deposez les fichiers PDF ici</system:String>
+    <system:String x:Key="DocsDropSubtext">ou cliquez pour choisir des fichiers</system:String>
+    <system:String x:Key="DocsBrowse">Choisir des fichiers</system:String>
+    <system:String x:Key="DocsIngestDir">Indexer le dossier surveille</system:String>
+    <system:String x:Key="DocsOpenWatch">Ouvrir le dossier surveille</system:String>
+    <system:String x:Key="DocsRefresh">Actualiser</system:String>
+    <system:String x:Key="DocsTotal">Documents au total</system:String>
+    <system:String x:Key="DocsIndexed">Indexes</system:String>
+    <system:String x:Key="DocsPending">En attente</system:String>
+    <system:String x:Key="DocsFailed">Echec</system:String>
+    <system:String x:Key="DocsQuarantine">En quarantaine</system:String>
+    <system:String x:Key="DocsVectors">Vecteurs au total</system:String>
+
+    <!-- Settings View -->
+    <system:String x:Key="SettingsTitle">Parametres</system:String>
+    <system:String x:Key="SettingsSave">Enregistrer les parametres</system:String>
+    <system:String x:Key="SettingsEncryption">Chiffrement</system:String>
+    <system:String x:Key="SettingsEncEnable">Activer le chiffrement</system:String>
+    <system:String x:Key="SettingsPassphrase">Phrase secrete</system:String>
+    <system:String x:Key="SettingsModel">Modele</system:String>
+    <system:String x:Key="SettingsLlmPath">Chemin du modele LLM</system:String>
+    <system:String x:Key="SettingsEmbPath">Chemin du modele d'embedding</system:String>
+    <system:String x:Key="SettingsGpu">GPU</system:String>
+    <system:String x:Key="SettingsGpuLayers">Couches GPU</system:String>
+    <system:String x:Key="SettingsContextSize">Taille du contexte</system:String>
+    <system:String x:Key="SettingsRetrieval">Parametres de recherche</system:String>
+    <system:String x:Key="SettingsTopK">Resultats Top K</system:String>
+    <system:String x:Key="SettingsThreshold">Seuil de similarite</system:String>
+    <system:String x:Key="SettingsAbstention">Seuil d'abstention</system:String>
+    <system:String x:Key="SettingsStrict">Mode strict</system:String>
+    <system:String x:Key="SettingsDualPass">Validation double passe</system:String>
+    <system:String x:Key="SettingsIngestion">Ingestion</system:String>
+    <system:String x:Key="SettingsWatchDir">Dossier surveille</system:String>
+    <system:String x:Key="SettingsParallel">Fichiers paralleles</system:String>
+    <system:String x:Key="SettingsDataDir">Dossier de donnees</system:String>
+    <system:String x:Key="SettingsBrowse">Parcourir</system:String>
+    <system:String x:Key="SettingsRestart">Redemarrez l'application pour appliquer les changements</system:String>
+
+    <!-- Health View -->
+    <system:String x:Key="HealthTitle">Sante du systeme</system:String>
+    <system:String x:Key="HealthRefresh">Actualiser</system:String>
+    <system:String x:Key="HealthLlm">Etat du modele</system:String>
+    <system:String x:Key="HealthGpu">GPU</system:String>
+    <system:String x:Key="HealthVectors">Stockage vectoriel</system:String>
+    <system:String x:Key="HealthDocs">Documents</system:String>
+    <system:String x:Key="HealthAudit">Chaine d'audit</system:String>
+    <system:String x:Key="HealthVerifyAudit">Verifier la chaine</system:String>
+    <system:String x:Key="HealthExportAudit">Exporter le journal d'audit</system:String>
+    <system:String x:Key="HealthMetrics">Metriques</system:String>
+    <system:String x:Key="HealthEncryption">Etat du chiffrement</system:String>
+
+    <!-- Warnings -->
+    <system:String x:Key="EncryptionWarning">ATTENTION : le chiffrement est desactive. Les donnees documentaires ne sont pas protegees. Activez le chiffrement dans les parametres.</system:String>
+    <system:String x:Key="EncryptionEnable">Activer maintenant</system:String>
+    <system:String x:Key="ModelWarning">ATTENTION : modele indisponible - application en mode bibliotheque uniquement.</system:String>
+
+    <!-- Status -->
+    <system:String x:Key="StatusReady">Pret</system:String>
+    <system:String x:Key="StatusProcessing">Traitement</system:String>
+    <system:String x:Key="StatusVectors">Vecteurs</system:String>
+
+    <!-- Chat View -->
+    <system:String x:Key="ChatTitle">Discussion juridique</system:String>
+    <system:String x:Key="ChatPlaceholder">Saisissez votre question juridique...</system:String>
+    <system:String x:Key="ChatSend">Envoyer</system:String>
+    <system:String x:Key="ChatNewSession">Nouvelle discussion</system:String>
+    <system:String x:Key="ChatYou">Vous</system:String>
+    <system:String x:Key="ChatAssistant">Assistant juridique</system:String>
+    <system:String x:Key="ChatSystem">Systeme</system:String>
+    <system:String x:Key="ChatCitationCount">citation</system:String>
+    <system:String x:Key="ChatSearching">Recherche des documents indexes...</system:String>
+    <system:String x:Key="ChatGenerating">Generation de la reponse...</system:String>
+    <system:String x:Key="ChatCaseNamespace">Espace de cas</system:String>
+    <system:String x:Key="ChatLibraryOnly">La discussion est desactivee tant que le systeme n'est pas pleinement operationnel.</system:String>
+
+    <!-- Fail-Closed Safety -->
+    <system:String x:Key="LibraryOnlyTitle">Mode bibliotheque uniquement - requetes juridiques desactivees</system:String>
+    <system:String x:Key="LibraryOnlyDesc">Vous pouvez consulter et gerer les documents, mais les questions sont desactivees jusqu'a resolution du probleme.</system:String>
+    <system:String x:Key="SafetyCritical">Alerte de securite critique - ne vous fiez pas a cette reponse sans verification independante.</system:String>
+    <system:String x:Key="SafetyWarning">Avertissements de securite presents - verifiez les sources avant utilisation.</system:String>
+    <system:String x:Key="SafetyDisclaimer">N'utilisez pas cette reponse pour des decisions juridiques sans revue independante.</system:String>
+    <system:String x:Key="StrictModeLocked">Le mode strict est verrouille en permanence - systeme critique base sur des preuves.</system:String>
+    <system:String x:Key="SystemBlockBanner">Mode bibliotheque uniquement - les requetes juridiques sont desactivees pour securite</system:String>
+    <system:String x:Key="StatusLibraryOnly">Mode bibliotheque uniquement</system:String>
+    <system:String x:Key="StatusDegraded">Execution avec avertissements</system:String>
+
+</ResourceDictionary>

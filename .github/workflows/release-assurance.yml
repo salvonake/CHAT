@@ -1,0 +1,143 @@
+name: Release Assurance
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: SemVer release version
+        required: true
+        type: string
+      build_profile:
+        description: Release assurance profile
+        required: true
+        default: Production
+        type: choice
+        options:
+          - Production
+          - NonProduction
+
+concurrency:
+  group: release-assurance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-assurance:
+    name: Enterprise Release Assurance
+    runs-on: windows-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.419'
+          cache: true
+          cache-dependency-path: |
+            Poseidon.sln
+            src/**/*.csproj
+            tests/**/*.csproj
+            installer/*.wixproj
+
+      - name: Validate repository hygiene
+        shell: pwsh
+        run: ./tests/scripts/Test-RepositoryHygiene.ps1
+
+      - name: Generate release evidence
+        shell: pwsh
+        run: ./tests/scripts/New-ReleaseEvidence.ps1 -ReleaseVersion "${{ inputs.release_version }}" -FailOnDirty
+
+      - name: Restore
+        run: dotnet restore Poseidon.sln
+
+      - name: Build
+        run: dotnet build Poseidon.sln -c Release --no-restore
+
+      - name: Unit tests
+        run: dotnet test tests/Poseidon.UnitTests/Poseidon.UnitTests.csproj -c Release --no-build
+
+      - name: Prepare model assets
+        shell: pwsh
+        env:
+          BUILD_PROFILE: ${{ inputs.build_profile }}
+          MODELS_URL: ${{ secrets.POSEIDON_RELEASE_MODELS_URL }}
+        run: |
+          New-Item -ItemType Directory -Force -Path ".artifacts/installer-models" | Out-Null
+          if ($env:BUILD_PROFILE -eq "Production") {
+            if ([string]::IsNullOrWhiteSpace($env:MODELS_URL)) {
+              throw "Production release assurance requires POSEIDON_RELEASE_MODELS_URL."
+            }
+            $archive = Join-Path $env:RUNNER_TEMP "poseidon-release-models.zip"
+            Invoke-WebRequest -Uri $env:MODELS_URL -OutFile $archive
+            Expand-Archive -LiteralPath $archive -DestinationPath ".artifacts/installer-models" -Force
+          } else {
+            Set-Content -Path ".artifacts/installer-models/qwen2.5-14b.Q5_K_M.gguf" -Value "ci-llm-model" -Encoding ASCII
+            Set-Content -Path ".artifacts/installer-models/arabert.onnx" -Value "ci-embedding-model" -Encoding ASCII
+          }
+
+      - name: Materialize signing certificate
+        if: ${{ inputs.build_profile == 'Production' }}
+        shell: pwsh
+        env:
+          CERT_BASE64: ${{ secrets.POSEIDON_SIGNING_CERTIFICATE_BASE64 }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:CERT_BASE64)) {
+            throw "Production release assurance requires POSEIDON_SIGNING_CERTIFICATE_BASE64."
+          }
+          [IO.File]::WriteAllBytes((Join-Path $env:RUNNER_TEMP "poseidon-signing.pfx"), [Convert]::FromBase64String($env:CERT_BASE64))
+
+      - name: Validate signing readiness
+        shell: pwsh
+        env:
+          BUILD_PROFILE: ${{ inputs.build_profile }}
+          CERT_PASSWORD: ${{ secrets.POSEIDON_SIGNING_CERTIFICATE_PASSWORD }}
+        run: |
+          if ($env:BUILD_PROFILE -eq "Production") {
+            ./tests/scripts/Test-ReleaseSigningReadiness.ps1 -BuildProfile Production -SigningCertificatePath (Join-Path $env:RUNNER_TEMP "poseidon-signing.pfx")
+          } else {
+            ./tests/scripts/Test-ReleaseSigningReadiness.ps1 -BuildProfile NonProduction -AllowUnsigned
+          }
+
+      - name: Build installer
+        shell: pwsh
+        env:
+          BUILD_PROFILE: ${{ inputs.build_profile }}
+          CERT_PASSWORD: ${{ secrets.POSEIDON_SIGNING_CERTIFICATE_PASSWORD }}
+          ENCRYPTION_PASSPHRASE: ${{ secrets.POSEIDON_INSTALLER_ENCRYPTION_PASSPHRASE }}
+        run: |
+          if ($env:BUILD_PROFILE -eq "Production") {
+            $env:POSEIDON_INSTALLER_ENCRYPTION_PASSPHRASE = $env:ENCRYPTION_PASSPHRASE
+            ./installer/build-installer.ps1 -ModelsPath ".artifacts/installer-models" -BuildProfile Production -SigningCertificatePath (Join-Path $env:RUNNER_TEMP "poseidon-signing.pfx") -SigningCertificatePassword $env:CERT_PASSWORD
+          } else {
+            ./installer/build-installer.ps1 -ModelsPath ".artifacts/installer-models" -BuildProfile NonProduction -AllowTestModels -UnsignedDevelopmentBuild -SkipPrereqDownload
+          }
+
+      - name: Validate installer artifacts
+        shell: pwsh
+        env:
+          BUILD_PROFILE: ${{ inputs.build_profile }}
+        run: |
+          if ($env:BUILD_PROFILE -eq "Production") {
+            ./installer/Validate-InstallerArtifacts.ps1 -BuildProfile Production
+          } else {
+            ./installer/Validate-InstallerArtifacts.ps1 -BuildProfile NonProduction -AllowTestModels -AllowUnsigned
+          }
+
+      - name: Run staged provisioning-check
+        shell: pwsh
+        run: |
+          $check = "publish/provisioning-check/win-x64/provisioning-check.exe"
+          & $check --config "installer/generated/appsettings.user.json" --manifest "installer/generated/model-manifest.json" --install-dir "installer/generated/staged-install" --mode full --log "installer/generated/provisioning-check-release-assurance.log"
+          if ($LASTEXITCODE -ne 0) { throw "provisioning-check release assurance gate failed." }
+
+      - name: Upload release evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: poseidon-release-assurance-${{ inputs.release_version }}
+          path: |
+            .artifacts/release-evidence/**
+            installer/output/**
+            installer/generated/provisioning-check-release-assurance.log
+          if-no-files-found: error

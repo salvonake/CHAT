@@ -1,0 +1,54 @@
+﻿<Project Sdk="WixToolset.Sdk/5.0.0">
+
+  <PropertyGroup>
+    <!-- MSI output settings -->
+    <OutputType>Package</OutputType>
+    <ProductVersion>1.0.0.0</ProductVersion>
+    <InstallerPlatform>x64</InstallerPlatform>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <ModelsPath Condition="'$(ModelsPath)' == ''">$(MSBuildProjectDirectory)\models</ModelsPath>
+    <LlmModelFileName Condition="'$(LlmModelFileName)' == ''">qwen2.5-14b.Q5_K_M.gguf</LlmModelFileName>
+    <ProvisioningCheckPath Condition="'$(ProvisioningCheckPath)' == ''">$(MSBuildProjectDirectory)\..\publish\provisioning-check\win-x64\provisioning-check.exe</ProvisioningCheckPath>
+    <MachineConfigPath Condition="'$(MachineConfigPath)' == ''">$(MSBuildProjectDirectory)\generated\appsettings.user.json</MachineConfigPath>
+    <ModelManifestPath Condition="'$(ModelManifestPath)' == ''">$(MSBuildProjectDirectory)\generated\model-manifest.json</ModelManifestPath>
+    <InstallerMode Condition="'$(InstallerMode)' == ''">full</InstallerMode>
+
+    <!-- Upgrade code: unique per product, never changes across versions -->
+    <DefineConstants>
+      ProductName=Ù†Ø¸Ø§Ù… Ø§Ù„Ø°ÙƒØ§Ø¡ Ø§Ù„Ù‚Ø§Ù†ÙˆÙ†ÙŠ;
+      ProductNameEn=Poseidon Desktop;
+      Manufacturer=Poseidon;
+      UpgradeCode=7A3B1F9E-4C2D-48A6-B5E0-1D6F8A2C3E9B;
+      ProductVersion=1.0.0.0;
+      ModelsPath=$(ModelsPath);
+      LlmModelFileName=$(LlmModelFileName);
+      ProvisioningCheckPath=$(ProvisioningCheckPath);
+      MachineConfigPath=$(MachineConfigPath);
+      ModelManifestPath=$(ModelManifestPath);
+      InstallerMode=$(InstallerMode);
+      SourceDir=$(MSBuildProjectDirectory)\..\publish\win-x64
+    </DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="Package.wxs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="WixToolset.UI.wixext" Version="5.0.0" />
+    <PackageReference Include="WixToolset.Heat" Version="5.0.0" />
+    <PackageReference Include="WixToolset.Util.wixext" Version="5.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <HarvestDirectory Include="$(MSBuildProjectDirectory)\..\publish\win-x64\">
+      <ComponentGroupName>AppFiles</ComponentGroupName>
+      <DirectoryRefId>INSTALLDIR</DirectoryRefId>
+      <SuppressRootDirectory>true</SuppressRootDirectory>
+      <SuppressSpecificWarnings>5151</SuppressSpecificWarnings>
+      <PreprocessorVariable>var.SourceDir</PreprocessorVariable>
+    </HarvestDirectory>
+  </ItemGroup>
+
+</Project>
+
