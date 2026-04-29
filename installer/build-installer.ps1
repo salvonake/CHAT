@@ -492,10 +492,12 @@ if (-not $SkipPublish) {
     Reset-Directory $PublishDir
     Reset-Directory $ProvisioningPublishDir
 
-    dotnet publish $DesktopProj -c $Configuration -r win-x64 --self-contained true -o $PublishDir /p:PublishSingleFile=false
+    $DesktopPublishLock = Join-Path $GeneratedDir "desktop-publish.packages.lock.json"
+    dotnet publish $DesktopProj -c $Configuration -r win-x64 --self-contained true -o $PublishDir /p:PublishSingleFile=false /p:NuGetLockFilePath=$DesktopPublishLock
     if ($LASTEXITCODE -ne 0) { throw "Desktop publish failed." }
 
-    dotnet publish $ProvisioningProj -c $Configuration -r win-x64 --self-contained true -o $ProvisioningPublishDir /p:PublishSingleFile=true
+    $ProvisioningPublishLock = Join-Path $GeneratedDir "provisioning-check-publish.packages.lock.json"
+    dotnet publish $ProvisioningProj -c $Configuration -r win-x64 --self-contained true -o $ProvisioningPublishDir /p:PublishSingleFile=true /p:NuGetLockFilePath=$ProvisioningPublishLock
     if ($LASTEXITCODE -ne 0) { throw "ProvisioningCheck publish failed." }
 }
 

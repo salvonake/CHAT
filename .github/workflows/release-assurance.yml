@@ -50,7 +50,7 @@ jobs:
         run: ./tests/scripts/New-ReleaseEvidence.ps1 -ReleaseVersion "${{ inputs.release_version }}" -FailOnDirty
 
       - name: Restore
-        run: dotnet restore Poseidon.sln
+        run: dotnet restore Poseidon.sln --locked-mode
 
       - name: Build
         run: dotnet build Poseidon.sln -c Release --no-restore
@@ -131,6 +131,29 @@ jobs:
           $check = "publish/provisioning-check/win-x64/provisioning-check.exe"
           & $check --config "installer/generated/appsettings.user.json" --manifest "installer/generated/model-manifest.json" --install-dir "installer/generated/staged-install" --mode full --log "installer/generated/provisioning-check-release-assurance.log"
           if ($LASTEXITCODE -ne 0) { throw "provisioning-check release assurance gate failed." }
+
+      - name: Generate compliance package
+        shell: pwsh
+        env:
+          BUILD_PROFILE: ${{ inputs.build_profile }}
+        run: |
+          if ($env:BUILD_PROFILE -eq "Production") {
+            ./tests/scripts/New-CompliancePackage.ps1 -ReleaseVersion "${{ inputs.release_version }}" -BuildProfile Production
+          } else {
+            ./tests/scripts/New-CompliancePackage.ps1 -ReleaseVersion "${{ inputs.release_version }}" -BuildProfile NonProduction -AllowIncomplete
+          }
+
+      - name: Evaluate final enterprise certification evidence
+        shell: pwsh
+        env:
+          BUILD_PROFILE: ${{ inputs.build_profile }}
+        run: |
+          ./tests/scripts/Test-EnterpriseDeploymentEvidence.ps1
+          if ($env:BUILD_PROFILE -eq "Production") {
+            ./tests/scripts/Test-FinalEnterpriseCertification.ps1 -RequireCertified
+          } else {
+            ./tests/scripts/Test-FinalEnterpriseCertification.ps1
+          }
 
       - name: Upload release evidence
         uses: actions/upload-artifact@v4

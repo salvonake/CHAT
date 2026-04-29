@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "scenarios": [
+    { "id": "interactive-install", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "silent-msi-install", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "silent-burn-install", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "repair", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "upgrade", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "rollback", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "uninstall", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "sccm-deployment", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "intune-deployment", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "gpo-deployment", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "system-context-deployment", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "multi-user-machine-deployment", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "existing-user-migration", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "existing-config-preservation", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "external-model-mode", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "full-local-mode", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "degraded-mode", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" }
+  ]
+}

@@ -57,7 +57,7 @@ jobs:
             tests/**/*.csproj
 
       - name: Restore
-        run: dotnet restore Poseidon.sln
+        run: dotnet restore Poseidon.sln --locked-mode
 
       - name: Build unit tests
         run: dotnet build tests/Poseidon.UnitTests/Poseidon.UnitTests.csproj --configuration Release
@@ -184,7 +184,7 @@ jobs:
             tests/**/*.csproj
 
       - name: Restore
-        run: dotnet restore tests/Poseidon.IntegrationTests/Poseidon.IntegrationTests.csproj
+        run: dotnet restore tests/Poseidon.IntegrationTests/Poseidon.IntegrationTests.csproj --locked-mode
 
       - name: Build integration tests
         run: dotnet build tests/Poseidon.IntegrationTests/Poseidon.IntegrationTests.csproj --configuration Release
@@ -242,7 +242,7 @@ jobs:
           curl -L "${{ secrets.POSEIDON_ONNX_MODEL_URL }}" -o .artifacts/model.onnx
 
       - name: Restore
-        run: dotnet restore tests/Poseidon.IntegrationTests/Poseidon.IntegrationTests.csproj
+        run: dotnet restore tests/Poseidon.IntegrationTests/Poseidon.IntegrationTests.csproj --locked-mode
 
       - name: Build integration tests
         run: dotnet build tests/Poseidon.IntegrationTests/Poseidon.IntegrationTests.csproj --configuration Release

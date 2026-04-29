@@ -20,7 +20,7 @@
 
 ## Build Proof
 
-- [ ] `dotnet restore Poseidon.sln` passes.
+- [ ] `dotnet restore Poseidon.sln --locked-mode` passes.
 - [ ] `dotnet build Poseidon.sln -c Release --no-restore` passes.
 - [ ] `dotnet test tests/Poseidon.UnitTests/Poseidon.UnitTests.csproj -c Release --no-build` passes.
 - [ ] Clean clone validation passes.
@@ -47,7 +47,9 @@
 
 - [ ] Artifact checksums are published.
 - [ ] SBOM or dependency inventory is attached.
+- [ ] Compliance package is attached.
+- [ ] Enterprise deployment certification matrix is attached.
+- [ ] Final enterprise certification report is attached.
 - [ ] Compliance metadata is attached.
 - [ ] Release owner approves promotion.
 - [ ] Deployment owner approves enterprise rollout.
-

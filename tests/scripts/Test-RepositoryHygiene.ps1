@@ -34,6 +34,14 @@ try {
         throw "Floating package versions are not allowed:$([Environment]::NewLine)$details"
     }
 
+    $csprojFiles = $projectFiles | Where-Object { $_ -like "*.csproj" }
+    foreach ($projectFile in $csprojFiles) {
+        $lockFile = Join-Path (Split-Path $projectFile -Parent) "packages.lock.json"
+        if (-not (Test-Path $lockFile -PathType Leaf)) {
+            throw "Package lock file missing for project: $projectFile"
+        }
+    }
+
     $workflowFiles = Get-TrackedFiles -Patterns @(".github/workflows/*.yml", ".github/workflows/*.yaml")
     $floatingSdk = $workflowFiles | Select-String -Pattern "dotnet-version:\s*['""]8\.0\.x['""]" -ErrorAction SilentlyContinue
     if ($floatingSdk) {

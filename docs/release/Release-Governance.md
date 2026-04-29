@@ -34,11 +34,14 @@ Poseidon releases are promoted only from the authoritative Poseidon solution and
 ## Required Local Gates
 
 ```powershell
-dotnet restore Poseidon.sln
+dotnet restore Poseidon.sln --locked-mode
 dotnet build Poseidon.sln -c Release --no-restore
 dotnet test tests/Poseidon.UnitTests/Poseidon.UnitTests.csproj -c Release --no-build
 ./tests/scripts/Test-RepositoryHygiene.ps1
 ./tests/scripts/New-ReleaseEvidence.ps1 -FailOnDirty
+./tests/scripts/New-CompliancePackage.ps1 -BuildProfile Production
+./tests/scripts/Test-EnterpriseDeploymentEvidence.ps1 -RequireCertified
+./tests/scripts/Test-FinalEnterpriseCertification.ps1 -RequireCertified
 ```
 
 ## Required Installer Gates
@@ -61,6 +64,9 @@ A release cannot be promoted unless the release owner attaches:
 - clean clone validation report
 - signing readiness report
 - installer artifact validation report
+- compliance report
+- enterprise deployment certification matrix
+- final enterprise certification report
 - release baseline manifest
 - tracked source manifest
 - deleted legacy manifest
@@ -68,4 +74,3 @@ A release cannot be promoted unless the release owner attaches:
 - SBOM or dependency inventory
 - artifact checksums
 - installer lifecycle smoke matrix
-

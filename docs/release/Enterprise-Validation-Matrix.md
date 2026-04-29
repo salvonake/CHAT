@@ -19,6 +19,7 @@
 | Unit tests | Unit test project passes in Release |
 | SDK | Local, CI, and docs use the pinned SDK |
 | Packages | No floating package versions |
+| Package locks | Every project has a tracked `packages.lock.json` and locked restore passes |
 
 ## Installer
 
@@ -43,6 +44,7 @@
 | Model integrity | required model hashes present and enforced |
 | Prerequisites | payloads are hash pinned |
 | Signing | MSI, Burn bundle, and provisioning-check signatures are valid |
+| Compliance | SBOM, dependency inventory, artifact checksums, and final certification report are generated |
 
 ## Enterprise Deployment
 
@@ -53,4 +55,3 @@
 | Multi-user | first user and subsequent users enter expected startup state |
 | Uninstall | policy-approved user data retention behavior is honored |
 | Rollback | failed upgrade rolls back without leaving partial trusted config |
-
