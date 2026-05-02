@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using Poseidon.Domain.Interfaces;
@@ -85,6 +86,13 @@ public sealed class LLamaSharpLlmService : ILlmService, IDisposable
                     .FirstOrDefault(a => a.GetName().Name == "LLamaSharp")
                     ?? System.Reflection.Assembly.Load("LLamaSharp");
 
+                if (!TryConfigureNativeBackend(llamaAssembly))
+                {
+                    _modelAvailable = false;
+                    _initialized = true;
+                    return;
+                }
+
                 var modelParamsType = llamaAssembly.GetType("LLama.Common.ModelParams")
                     ?? throw new TypeLoadException("Cannot find LLama.Common.ModelParams");
                 var llamaWeightsType = llamaAssembly.GetType("LLama.LLamaWeights")
@@ -105,8 +113,15 @@ public sealed class LLamaSharpLlmService : ILlmService, IDisposable
                     ?? throw new InvalidOperationException("Failed to load model weights");
 
                 // Create context
-                var createContextMethod = llamaWeightsType.GetMethod("CreateContext");
-                _context = createContextMethod?.Invoke(_model, [modelParams])
+                var createContextMethod = llamaWeightsType.GetMethod("CreateContext")
+                    ?? throw new MissingMethodException("LLama.LLamaWeights", "CreateContext");
+                var createContextArgs = createContextMethod.GetParameters().Length switch
+                {
+                    1 => new object?[] { modelParams },
+                    2 => [modelParams, _logger],
+                    _ => throw new MissingMethodException("LLama.LLamaWeights", "CreateContext")
+                };
+                _context = createContextMethod.Invoke(_model, createContextArgs)
                     ?? throw new InvalidOperationException("Failed to create context");
 
                 _modelAvailable = true;
@@ -129,7 +144,7 @@ public sealed class LLamaSharpLlmService : ILlmService, IDisposable
             catch (Exception ex)
             {
                 _initError = $"Failed to load LLamaSharp: {ex.Message}";
-                _logger.LogError(ex, "LLamaSharp initialization failed. Ensure LLamaSharp NuGet package is installed.");
+                _logger.LogError(ex, "LLamaSharp initialization failed. Ensure LLamaSharp backend native binaries are installed and loadable.");
                 _modelAvailable = false;
             }
 
@@ -139,6 +154,129 @@ public sealed class LLamaSharpLlmService : ILlmService, IDisposable
         {
             _initLock.Release();
         }
+    }
+
+    private bool TryConfigureNativeBackend(Assembly llamaAssembly)
+    {
+        var baseDirectory = AppContext.BaseDirectory;
+        var nativeRoot = Path.Combine(baseDirectory, "runtimes", "win-x64", "native");
+        var candidateDirectories = new[]
+            {
+                baseDirectory,
+                nativeRoot
+            }
+            .Concat(Directory.Exists(nativeRoot)
+                ? Directory.EnumerateDirectories(nativeRoot, "*", SearchOption.AllDirectories)
+                : [])
+            .Where(Directory.Exists)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var nativeDlls = candidateDirectories
+            .SelectMany(dir => Directory.EnumerateFiles(dir, "*.dll", SearchOption.TopDirectoryOnly))
+            .Where(path =>
+            {
+                var name = Path.GetFileName(path);
+                return name.Equals("llama.dll", StringComparison.OrdinalIgnoreCase) ||
+                       name.Equals("ggml.dll", StringComparison.OrdinalIgnoreCase) ||
+                       name.Equals("llava_shared.dll", StringComparison.OrdinalIgnoreCase);
+            })
+            .ToArray();
+
+        if (nativeDlls.Length == 0)
+        {
+            _initError = $"No LLamaSharp backend native DLLs found under {baseDirectory}.";
+            _logger.LogError(_initError);
+            return false;
+        }
+
+        var configType = llamaAssembly.GetType("LLama.Native.NativeLibraryConfig");
+        var instance = configType?.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
+        if (instance is null)
+        {
+            _logger.LogWarning("LLamaSharp NativeLibraryConfig was not available; continuing with default native loader.");
+            return true;
+        }
+
+        try
+        {
+            var instanceType = instance.GetType();
+            var withSearchDirectory = instanceType.GetMethod("WithSearchDirectory", [typeof(string)]);
+            foreach (var directory in candidateDirectories)
+                withSearchDirectory?.Invoke(instance, [directory]);
+
+            var cudaEnabled = ShouldEnableCudaBackend();
+            var explicitBackend = "";
+            if (!cudaEnabled)
+            {
+                var cpuDirectory = candidateDirectories.FirstOrDefault(directory =>
+                    directory.Contains("cpu-avx2", StringComparison.OrdinalIgnoreCase));
+                var cpuLlama = string.IsNullOrWhiteSpace(cpuDirectory)
+                    ? ""
+                    : Path.Combine(cpuDirectory, "llama.dll");
+                var cpuLlava = string.IsNullOrWhiteSpace(cpuDirectory)
+                    ? ""
+                    : Path.Combine(cpuDirectory, "llava_shared.dll");
+
+                if (File.Exists(cpuLlama) && File.Exists(cpuLlava))
+                {
+                    instanceType.GetMethod("WithLibrary", [typeof(string), typeof(string)])
+                        ?.Invoke(instance, [cpuLlama, cpuLlava]);
+                    explicitBackend = cpuLlama;
+                }
+            }
+
+            instanceType.GetMethod("WithCuda", [typeof(bool)])?.Invoke(instance, [cudaEnabled]);
+            instanceType.GetMethod("WithAutoFallback", [typeof(bool)])?.Invoke(instance, [true]);
+
+            _logger.LogInformation(
+                "LLamaSharp native backend preflight passed. CudaEnabled={CudaEnabled}; ExplicitBackend={ExplicitBackend}; SearchDirectories={Directories}; NativeDlls={NativeDlls}",
+                cudaEnabled,
+                explicitBackend,
+                string.Join(";", candidateDirectories),
+                string.Join(";", nativeDlls.Select(Path.GetFileName)));
+            return true;
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException is InvalidOperationException)
+        {
+            _logger.LogWarning(
+                ex.InnerException,
+                "LLamaSharp native backend was already loaded before preflight configuration; continuing with loaded backend.");
+            return true;
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "LLamaSharp native backend was already loaded before preflight configuration; continuing with loaded backend.");
+            return true;
+        }
+    }
+
+    private bool ShouldEnableCudaBackend()
+    {
+        if (_gpuLayers == 0)
+            return false;
+
+        var cudaPaths = Environment.GetEnvironmentVariables()
+            .Cast<System.Collections.DictionaryEntry>()
+            .Where(entry => entry.Key is string key &&
+                            key.StartsWith("CUDA_PATH", StringComparison.OrdinalIgnoreCase))
+            .Select(entry => entry.Value?.ToString() ?? "")
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .ToArray();
+
+        if (cudaPaths.Any(path => path.Contains("v12", StringComparison.OrdinalIgnoreCase)))
+            return true;
+
+        if (cudaPaths.Length > 0)
+        {
+            _logger.LogWarning(
+                "CUDA backend disabled because LLamaSharp.Backend.Cuda12 requires a CUDA 12 runtime. Detected CUDA paths: {CudaPaths}",
+                string.Join(";", cudaPaths));
+        }
+
+        return false;
     }
 
     public async Task<LlmResponse> GenerateAsync(

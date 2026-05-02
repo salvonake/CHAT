@@ -17,7 +17,7 @@
 
   <Bundle Name="$(var.ProductNameEn)"
           Manufacturer="$(var.Manufacturer)"
-          Version="1.0.0.0"
+          Version="1.0.2.1"
           UpgradeCode="$(var.BundleUpgradeCode)"
           IconSourceFile="Resources\Poseidon.ico"
           AboutUrl="https://poseidon.local"
@@ -76,10 +76,25 @@
           Permanent="yes"
                          DetectCondition="DotNetHostVersion AND DotNetHostVersion &gt;= v8.0.0" />
 
+      <?if $(var.InstallerMode) = full And $(var.ExternalLlmPayload) = true ?>
+      <!--
+           Always run the helper. It is idempotent and performs SHA-256 detection
+           internally, so repair can recover a missing or tampered model payload.
+      -->
+      <ExePackage
+          Id="PoseidonExternalLlmPayload"
+                         SourceFile="$(var.ModelPayloadInstallerPath)"
+                         InstallArguments="--source &quot;[WixBundleOriginalSourceFolder]payload\Models&quot; --file &quot;$(var.LlmModelFileName)&quot; --sha256 &quot;$(var.LlmModelSha256)&quot;"
+          PerMachine="yes"
+          Vital="yes"
+          Permanent="yes"
+          DetectCondition="0" />
+      <?endif?>
+
       <!-- â”€â”€ Main Application MSI â”€â”€ -->
       <MsiPackage
           Id="PoseidonMsi"
-          SourceFile="$(var.Poseidon.Installer.TargetPath)"
+          SourceFile="$(var.MsiSourcePath)"
           Vital="yes"
                          ForcePerMachine="yes" />
 

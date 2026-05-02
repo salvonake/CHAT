@@ -1,0 +1,1290 @@
+﻿diff --git a/deploy/enterprise/deployment-evidence.template.json b/deploy/enterprise/deployment-evidence.template.json
+index bae990d..e89094f 100644
+--- a/deploy/enterprise/deployment-evidence.template.json
++++ b/deploy/enterprise/deployment-evidence.template.json
+@@ -16,6 +16,16 @@
+     { "id": "existing-user-migration", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+     { "id": "existing-config-preservation", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+     { "id": "external-model-mode", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
++    { "id": "sccm-external-payload-delivery", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
++    { "id": "intune-payload-staging", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
++    { "id": "gpo-network-payload-access", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
++    { "id": "system-context-payload-resolution", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
++    { "id": "offline-external-payload-install", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
++    { "id": "partial-payload-failure", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
++    { "id": "rollback-after-payload-copy-failure", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
++    { "id": "upgrade-existing-payload", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
++    { "id": "repair-missing-payload", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
++    { "id": "multi-user-external-payload", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+     { "id": "full-local-mode", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+     { "id": "degraded-mode", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" }
+   ]
+diff --git a/docs/deployment.md b/docs/deployment.md
+index 86ac32a..1b0fb9d 100644
+--- a/docs/deployment.md
++++ b/docs/deployment.md
+@@ -6,6 +6,8 @@ Poseidon production deployment uses the official WiX/Burn installer pipeline. Ma
+ 
+ - `Poseidon.Installer.msi`: enterprise MSI for SCCM/GPO-style deployment.
+ - `Poseidon.Bundle.exe`: Burn bundle that chains prerequisites and the MSI.
++- `Setup.exe`: release-friendly copy of the Burn bundle.
++- `payload/Models/<LLM model>`: externalized production LLM payload when the model is too large for MSI packaging.
+ - `model-manifest.json`: schema-versioned model manifest with file names, target paths, sizes, modes, and SHA-256 hashes.
+ - `build-provenance.json`: release provenance, signing, prerequisite, and secret-storage metadata.
+ 
+@@ -14,11 +16,25 @@ Poseidon production deployment uses the official WiX/Burn installer pipeline. Ma
+ - Full: LLM and embedding models are bundled and hash-validated.
+ - Degraded: embedding model is bundled and LLM omission is explicit.
+ - External model mode: model references are validated by contract and must not bypass hash or provider policy.
++- Full with external LLM payload: `Setup.exe` installs the application and prerequisites, then copies the LLM from `payload/Models` into the machine install path with SHA-256 validation.
++
++## External Payload Distribution
++
++When full local mode uses an external LLM payload, enterprise deployment tools must preserve this layout:
++
++```text
++Setup.exe
++payload\Models\<LLM filename from model-manifest.json>
++```
++
++SCCM, Intune, GPO, offline media, and network-share deployments must prove that the bundle and payload remain co-located for the installing account, including SYSTEM. Direct MSI deployment is valid only for modes that do not require an external LLM payload.
+ 
+ ## Production Requirements
+ 
+ - Signed MSI, Burn bundle, and provisioning-check executable.
++- Signed payload helper executable in production builds.
+ - Pinned prerequisite hashes.
++- External payload hash continuity with `model-manifest.json`.
+ - Machine config with DPAPI secret references, not plaintext production secrets.
+ - Successful post-install provisioning-check.
+ - First launch must enter Full, Degraded, or Recovery deterministically.
+diff --git a/docs/installer.md b/docs/installer.md
+index 89fbd73..89ca80e 100644
+--- a/docs/installer.md
++++ b/docs/installer.md
+@@ -12,6 +12,8 @@ WiX MSI plus Burn bundle is the single supported enterprise installer architectu
+ 
+ - `installer/output/Poseidon.Installer.msi`
+ - `installer/output/Poseidon.Bundle.exe`
++- `installer/output/Setup.exe`
++- `installer/output/payload/Models/<LLM model>` when the LLM exceeds MSI single-file limits
+ 
+ ## Machine Contract
+ 
+@@ -25,6 +27,26 @@ The installer must create:
+ 
+ `provisioning-check` runs after file installation and blocks install success when config, model, hash, provider, or secret contract validation fails.
+ 
++## External LLM Payload Contract
++
++Production-scale GGUF files can exceed the MSI single-file ceiling. In that case the Burn bundle remains the authoritative installer and the LLM is distributed as an external payload beside the bundle:
++
++```text
++installer/output/
++  Setup.exe
++  payload/
++    Models/
++      <LLM filename from model-manifest.json>
++```
++
++The payload helper copies the LLM into `[INSTALLDIR]\Models`, verifies SHA-256 against `model-manifest.json`, and fails closed when the payload is missing, truncated, renamed, or hash-mismatched. The MSI must not be used alone for full local mode when the manifest requires an external LLM payload.
++
++Enterprise deployment systems must preserve the relative `Setup.exe` +
++`payload\Models` layout. SCCM, Intune, GPO, offline media, and network-share
++delivery packages are certification-blocked unless lab evidence proves this
++layout survives staging, SYSTEM-context execution, repair, upgrade, rollback,
++and multi-user lifecycle scenarios.
++
+ ## Deprecated Paths
+ 
+ Inno and legacy installer identities are not supported production paths. Git history is the archive for removed migration files.
+diff --git a/docs/operations/Enterprise-Deployment-Certification.md b/docs/operations/Enterprise-Deployment-Certification.md
+index e7b3195..fea67c1 100644
+--- a/docs/operations/Enterprise-Deployment-Certification.md
++++ b/docs/operations/Enterprise-Deployment-Certification.md
+@@ -19,6 +19,16 @@ Poseidon enterprise certification requires evidence for:
+ - existing user migration
+ - existing config preservation
+ - external model mode
++- SCCM external payload delivery
++- Intune payload staging
++- GPO network payload access
++- SYSTEM-context payload resolution
++- offline external payload install
++- partial payload failure
++- rollback after payload copy failure
++- upgrade with existing payload
++- repair with missing payload
++- multi-user external payload
+ - full local mode
+ - degraded mode
+ 
+@@ -53,3 +63,12 @@ Run:
+ 
+ Certification fails closed if any required scenario is missing, failed, or lacks log evidence.
+ 
++## External Payload Certification
++
++Full local installs that externalize the LLM must attach the matrix in `docs/release/External-Payload-Deployment-Matrix.md`. Deployment evidence must prove:
++
++- `Setup.exe` and `payload\Models` are delivered as a single deployment unit.
++- SYSTEM-context installs resolve the same payload root expected by Burn.
++- payload filename, size, and SHA-256 match `model-manifest.json`.
++- missing or corrupted payloads fail installation and do not produce trusted Full startup state.
++- repair and upgrade behavior is deterministic when the payload already exists or must be restored.
+diff --git a/docs/operations/Production-Signing-Runbook.md b/docs/operations/Production-Signing-Runbook.md
+index 0f1d524..688fba7 100644
+--- a/docs/operations/Production-Signing-Runbook.md
++++ b/docs/operations/Production-Signing-Runbook.md
+@@ -17,9 +17,15 @@ This runbook defines the production signing procedure for Poseidon release artif
+ 
+ - `Poseidon.Installer.msi`
+ - `Poseidon.Bundle.exe`
++- `Setup.exe`
+ - `provisioning-check.exe`
++- `ModelPayloadInstaller.exe` when external LLM payload mode is used.
+ - `Poseidon.Desktop.exe` when desktop executable signing is enabled.
+ 
++`Setup.exe` is the enterprise entry point and must retain a valid Authenticode
++signature after being copied from the Burn bundle. External payload mode also
++requires the helper executable to be signed before it is embedded in the bundle.
++
+ ## Validation
+ 
+ Run:
+@@ -43,4 +49,5 @@ Attach:
+ - certificate validity period
+ - timestamp authority
+ - SHA-256 hashes for signed artifacts
+-
++- SHA-256 hashes for external payload files under `payload/Models`
++- helper executable signature evidence when external payload mode is used
+diff --git a/docs/release/Enterprise-Validation-Matrix.md b/docs/release/Enterprise-Validation-Matrix.md
+index 97c7680..4d34517 100644
+--- a/docs/release/Enterprise-Validation-Matrix.md
++++ b/docs/release/Enterprise-Validation-Matrix.md
+@@ -26,6 +26,7 @@
+ | Gate | Required Result |
+ |---|---|
+ | Full mode | Bundled LLM and embedding present with hashes |
++| Full mode with external LLM payload | `Setup.exe` and `payload\Models` layout present; LLM hash matches manifest before install succeeds |
+ | Degraded mode | Embedding present, LLM intentionally external or omitted |
+ | External mode | External provider endpoints and model identifiers validated |
+ | Post-install validation | `provisioning-check` blocks failed installs |
+@@ -55,3 +56,9 @@
+ | Multi-user | first user and subsequent users enter expected startup state |
+ | Uninstall | policy-approved user data retention behavior is honored |
+ | Rollback | failed upgrade rolls back without leaving partial trusted config |
++| SCCM external payload | bundle and `payload\Models` are deployed as one content unit |
++| Intune payload staging | package extraction preserves the payload folder for SYSTEM |
++| GPO network payload | machine account can read payload from approved distribution path |
++| Offline payload install | install succeeds without internet when prerequisites and payload are staged |
++| Payload failure handling | missing, truncated, or hash-mismatched payload blocks certification |
++| Repair/upgrade payload behavior | existing valid payload is preserved; missing payload repair requires valid source |
+diff --git a/docs/release/Release-Checklist.md b/docs/release/Release-Checklist.md
+index 07e171f..d504b5d 100644
+--- a/docs/release/Release-Checklist.md
++++ b/docs/release/Release-Checklist.md
+@@ -29,7 +29,10 @@
+ 
+ - [ ] `installer/build-installer.ps1 -BuildProfile Production` passes with production assets.
+ - [ ] `installer/Validate-InstallerArtifacts.ps1 -BuildProfile Production` passes.
++- [ ] Packaging warnings are reviewed and no unsuppressed certification-impacting warnings remain.
+ - [ ] staged `provisioning-check.exe` validation passes.
++- [ ] `Setup.exe` and `payload\Models` layout is present when full mode externalizes the LLM.
++- [ ] external LLM payload hash matches `model-manifest.json`.
+ - [ ] MSI silent install, repair, and uninstall pass.
+ - [ ] Burn silent install, repair, and uninstall pass.
+ - [ ] Upgrade from previous release passes.
+@@ -40,6 +43,8 @@
+ - [ ] `provisioning-check.exe` is signed.
+ - [ ] `Poseidon.Installer.msi` is signed.
+ - [ ] `Poseidon.Bundle.exe` is signed.
++- [ ] `Setup.exe` is signed and matches the signed Burn bundle checksum.
++- [ ] `ModelPayloadInstaller.exe` is signed when external payload mode is used.
+ - [ ] Authenticode verification is valid.
+ - [ ] signing report contains signer subject, thumbprint, and timestamp URL.
+ 
+@@ -48,8 +53,11 @@
+ - [ ] Artifact checksums are published.
+ - [ ] SBOM or dependency inventory is attached.
+ - [ ] Compliance package is attached.
++- [ ] Signed compliance package is attached.
+ - [ ] Enterprise deployment certification matrix is attached.
++- [ ] External payload deployment matrix is attached when applicable.
+ - [ ] Final enterprise certification report is attached.
+ - [ ] Compliance metadata is attached.
+ - [ ] Release owner approves promotion.
+ - [ ] Deployment owner approves enterprise rollout.
++- [ ] Governance authority approves enterprise release promotion.
+diff --git a/docs/release/Release-Governance.md b/docs/release/Release-Governance.md
+index 5c39c6f..eaf9f4b 100644
+--- a/docs/release/Release-Governance.md
++++ b/docs/release/Release-Governance.md
+@@ -9,6 +9,8 @@ Poseidon releases are promoted only from the authoritative Poseidon solution and
+ - Official artifacts:
+   - `Poseidon.Installer.msi`
+   - `Poseidon.Bundle.exe`
++  - `Setup.exe`
++  - `payload/Models/<LLM model>` when full local mode uses an external LLM payload
+   - `model-manifest.json`
+   - `build-provenance.json`
+   - `prerequisite-validation.json`
+@@ -54,8 +56,12 @@ Production release promotion requires:
+ - signed `provisioning-check.exe`
+ - signed `Poseidon.Installer.msi`
+ - signed `Poseidon.Bundle.exe`
++- signed `Setup.exe`
++- signed `ModelPayloadInstaller.exe` when external LLM payload mode is used
+ - successful `Validate-InstallerArtifacts.ps1 -BuildProfile Production`
+ - staged `provisioning-check.exe` validation
++- reviewed packaging warning evidence with no unsuppressed certification-impacting warnings
++- external LLM payload certification when the model is distributed outside the MSI because of package size limits
+ 
+ ## Approval Gates
+ 
+@@ -74,3 +80,9 @@ A release cannot be promoted unless the release owner attaches:
+ - SBOM or dependency inventory
+ - artifact checksums
+ - installer lifecycle smoke matrix
++- external payload deployment matrix when applicable
++- signed compliance package
++- governance authority signoff
++
++Release authority remains blocked until all approval gates are attached and
++`Test-FinalEnterpriseCertification.ps1 -RequireCertified` passes.
+diff --git a/installer/Bundle.wxs b/installer/Bundle.wxs
+index 8fb4411..b585111 100644
+--- a/installer/Bundle.wxs
++++ b/installer/Bundle.wxs
+@@ -17,7 +17,7 @@
+ 
+   <Bundle Name="$(var.ProductNameEn)"
+           Manufacturer="$(var.Manufacturer)"
+-          Version="1.0.0.0"
++          Version="1.0.2.1"
+           UpgradeCode="$(var.BundleUpgradeCode)"
+           IconSourceFile="Resources\Poseidon.ico"
+           AboutUrl="https://poseidon.local"
+@@ -76,10 +76,25 @@
+           Permanent="yes"
+                          DetectCondition="DotNetHostVersion AND DotNetHostVersion &gt;= v8.0.0" />
+ 
++      <?if $(var.InstallerMode) = full And $(var.ExternalLlmPayload) = true ?>
++      <!--
++           Always run the helper. It is idempotent and performs SHA-256 detection
++           internally, so repair can recover a missing or tampered model payload.
++      -->
++      <ExePackage
++          Id="PoseidonExternalLlmPayload"
++                         SourceFile="$(var.ModelPayloadInstallerPath)"
++                         InstallArguments="--source &quot;[WixBundleOriginalSourceFolder]payload\Models&quot; --file &quot;$(var.LlmModelFileName)&quot; --sha256 &quot;$(var.LlmModelSha256)&quot;"
++          PerMachine="yes"
++          Vital="yes"
++          Permanent="yes"
++          DetectCondition="0" />
++      <?endif?>
++
+       <!-- â”€â”€ Main Application MSI â”€â”€ -->
+       <MsiPackage
+           Id="PoseidonMsi"
+-          SourceFile="$(var.Poseidon.Installer.TargetPath)"
++          SourceFile="$(var.MsiSourcePath)"
+           Vital="yes"
+                          ForcePerMachine="yes" />
+ 
+diff --git a/installer/Package.wxs b/installer/Package.wxs
+index fb7c313..cf21a78 100644
+--- a/installer/Package.wxs
++++ b/installer/Package.wxs
+@@ -55,7 +55,7 @@
+       <ComponentRef Id="ModelManifestComp"/>
+     </Feature>
+ 
+-    <?if $(var.InstallerMode) = full ?>
++    <?if $(var.InstallerMode) = full And $(var.ExternalLlmPayload) != true ?>
+     <Feature Id="ModelFeature"
+              Title="Modele LLM - Qwen 2.5 14B Q5_K_M"
+              Description="Modele de langage (~10 Go) requis pour les reponses juridiques"
+@@ -236,7 +236,7 @@
+        MODEL FILES (selectable feature)
+        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+   <Fragment>
+-    <?if $(var.InstallerMode) = full ?>
++    <?if $(var.InstallerMode) = full And $(var.ExternalLlmPayload) != true ?>
+     <ComponentGroup Id="ModelFiles" Directory="ModelsDir">
+       <Component Id="LlmModelFileComp"
+                  Guid="E5F6A7B8-C9D0-1234-EFAB-567890123456">
+diff --git a/installer/Poseidon.Bundle.wixproj b/installer/Poseidon.Bundle.wixproj
+index eb97338..07a045b 100644
+--- a/installer/Poseidon.Bundle.wixproj
++++ b/installer/Poseidon.Bundle.wixproj
+@@ -9,12 +9,28 @@
+     <InstallerPlatform>x64</InstallerPlatform>
+     <EnableDefaultItems>false</EnableDefaultItems>
+     <NuGetPackageRoot Condition="'$(NuGetPackageRoot)' == ''">$(UserProfile)\.nuget\packages\</NuGetPackageRoot>
++    <ModelsPath Condition="'$(ModelsPath)' == ''">$(MSBuildProjectDirectory)\models</ModelsPath>
++    <ProvisioningCheckPath Condition="'$(ProvisioningCheckPath)' == ''">$(MSBuildProjectDirectory)\..\publish\provisioning-check\win-x64\provisioning-check.exe</ProvisioningCheckPath>
++    <MachineConfigPath Condition="'$(MachineConfigPath)' == ''">$(MSBuildProjectDirectory)\generated\appsettings.user.json</MachineConfigPath>
++    <ModelManifestPath Condition="'$(ModelManifestPath)' == ''">$(MSBuildProjectDirectory)\generated\model-manifest.json</ModelManifestPath>
++    <InstallerMode Condition="'$(InstallerMode)' == ''">full</InstallerMode>
++    <ExternalLlmPayload Condition="'$(ExternalLlmPayload)' == ''">false</ExternalLlmPayload>
++    <ModelPayloadInstallerPath Condition="'$(ModelPayloadInstallerPath)' == ''">$(MSBuildProjectDirectory)\generated\ModelPayloadInstaller\win-x64\ModelPayloadInstaller.exe</ModelPayloadInstallerPath>
++    <LlmModelFileName Condition="'$(LlmModelFileName)' == ''">qwen2.5-14b.Q5_K_M.gguf</LlmModelFileName>
++    <LlmModelSha256 Condition="'$(LlmModelSha256)' == ''">0000000000000000000000000000000000000000000000000000000000000000</LlmModelSha256>
++    <MsiSourcePath Condition="'$(MsiSourcePath)' == ''">$(MSBuildProjectDirectory)\output\Poseidon.Installer.msi</MsiSourcePath>
+ 
+     <DefineConstants>
+       ProductName=Ù†Ø¸Ø§Ù… Ø§Ù„Ø°ÙƒØ§Ø¡ Ø§Ù„Ù‚Ø§Ù†ÙˆÙ†ÙŠ;
+       ProductNameEn=Poseidon Desktop;
+       Manufacturer=Poseidon;
+-      BundleUpgradeCode=8B4C2F0A-5D3E-49B7-A6F1-2E7F9B3D4F0C
++      BundleUpgradeCode=8B4C2F0A-5D3E-49B7-A6F1-2E7F9B3D4F0C;
++      InstallerMode=$(InstallerMode);
++      ExternalLlmPayload=$(ExternalLlmPayload);
++      ModelPayloadInstallerPath=$(ModelPayloadInstallerPath);
++      LlmModelFileName=$(LlmModelFileName);
++      LlmModelSha256=$(LlmModelSha256);
++      MsiSourcePath=$(MsiSourcePath)
+     </DefineConstants>
+   </PropertyGroup>
+ 
+@@ -33,10 +49,5 @@
+     <WixExtension Include="$(NuGetPackageRoot)\wixtoolset.util.wixext\5.0.0\wixext5\WixToolset.Util.wixext.dll" />
+   </ItemGroup>
+ 
+-  <ItemGroup>
+-    <!-- Reference the MSI Package project -->
+-    <ProjectReference Include="Poseidon.Installer.wixproj"/>
+-  </ItemGroup>
+-
+ </Project>
+ 
+diff --git a/installer/Poseidon.Installer.wixproj b/installer/Poseidon.Installer.wixproj
+index 63585ce..5f44de6 100644
+--- a/installer/Poseidon.Installer.wixproj
++++ b/installer/Poseidon.Installer.wixproj
+@@ -3,7 +3,7 @@
+   <PropertyGroup>
+     <!-- MSI output settings -->
+     <OutputType>Package</OutputType>
+-    <ProductVersion>1.0.0.0</ProductVersion>
++    <ProductVersion>1.0.2.1</ProductVersion>
+     <InstallerPlatform>x64</InstallerPlatform>
+     <EnableDefaultItems>false</EnableDefaultItems>
+     <ModelsPath Condition="'$(ModelsPath)' == ''">$(MSBuildProjectDirectory)\models</ModelsPath>
+@@ -12,6 +12,8 @@
+     <MachineConfigPath Condition="'$(MachineConfigPath)' == ''">$(MSBuildProjectDirectory)\generated\appsettings.user.json</MachineConfigPath>
+     <ModelManifestPath Condition="'$(ModelManifestPath)' == ''">$(MSBuildProjectDirectory)\generated\model-manifest.json</ModelManifestPath>
+     <InstallerMode Condition="'$(InstallerMode)' == ''">full</InstallerMode>
++    <ExternalLlmPayload Condition="'$(ExternalLlmPayload)' == ''">false</ExternalLlmPayload>
++    <HarvestDirectorySuppressSpecificWarnings>5151</HarvestDirectorySuppressSpecificWarnings>
+ 
+     <!-- Upgrade code: unique per product, never changes across versions -->
+     <DefineConstants>
+@@ -19,13 +21,14 @@
+       ProductNameEn=Poseidon Desktop;
+       Manufacturer=Poseidon;
+       UpgradeCode=7A3B1F9E-4C2D-48A6-B5E0-1D6F8A2C3E9B;
+-      ProductVersion=1.0.0.0;
++      ProductVersion=$(ProductVersion);
+       ModelsPath=$(ModelsPath);
+       LlmModelFileName=$(LlmModelFileName);
+       ProvisioningCheckPath=$(ProvisioningCheckPath);
+       MachineConfigPath=$(MachineConfigPath);
+       ModelManifestPath=$(ModelManifestPath);
+       InstallerMode=$(InstallerMode);
++      ExternalLlmPayload=$(ExternalLlmPayload);
+       SourceDir=$(MSBuildProjectDirectory)\..\publish\win-x64
+     </DefineConstants>
+   </PropertyGroup>
+@@ -45,7 +48,6 @@
+       <ComponentGroupName>AppFiles</ComponentGroupName>
+       <DirectoryRefId>INSTALLDIR</DirectoryRefId>
+       <SuppressRootDirectory>true</SuppressRootDirectory>
+-      <SuppressSpecificWarnings>5151</SuppressSpecificWarnings>
+       <PreprocessorVariable>var.SourceDir</PreprocessorVariable>
+     </HarvestDirectory>
+   </ItemGroup>
+diff --git a/installer/Validate-InstallerArtifacts.ps1 b/installer/Validate-InstallerArtifacts.ps1
+index 3516be7..0a9f329 100644
+--- a/installer/Validate-InstallerArtifacts.ps1
++++ b/installer/Validate-InstallerArtifacts.ps1
+@@ -26,10 +26,11 @@ $bundle = Join-Path $OutputDir "Poseidon.Bundle.exe"
+ $manifest = Join-Path $OutputDir "model-manifest.json"
+ $provenance = Join-Path $OutputDir "build-provenance.json"
+ $prerequisiteReport = Join-Path $OutputDir "prerequisite-validation.json"
++$nativeBackendReport = Join-Path $OutputDir "native-backend-validation.json"
+ $signingReport = Join-Path $OutputDir "signing-report.json"
+ $machineConfig = Join-Path (Split-Path $OutputDir -Parent) "generated\appsettings.user.json"
+ 
+-foreach ($artifact in @($msi, $bundle, $manifest, $provenance, $prerequisiteReport, $signingReport)) {
++foreach ($artifact in @($msi, $bundle, $manifest, $provenance, $prerequisiteReport, $nativeBackendReport, $signingReport)) {
+     if (-not (Test-Path $artifact -PathType Leaf)) {
+         throw "Required installer artifact missing: $artifact"
+     }
+@@ -82,6 +83,17 @@ if ($BuildProfile -eq "Production") {
+     }
+ }
+ 
++$nativeBackends = @((Get-Content -Raw $nativeBackendReport | ConvertFrom-Json) | ForEach-Object { $_ })
++foreach ($backend in $nativeBackends) {
++    if ($backend.required -eq $true -and ($backend.present -ne $true -or $backend.sizeBytes -le 0)) {
++        throw "Required native backend payload missing: $($backend.name)"
++    }
++
++    if ($backend.present -eq $true -and $backend.sha256 -notmatch '^[a-f0-9]{64}$') {
++        throw "Native backend payload has invalid hash: $($backend.name)"
++    }
++}
++
+ $prereqs = Get-Content -Raw $prerequisiteReport | ConvertFrom-Json
+ if (-not $prereqs -or $prereqs.Count -lt 1) {
+     throw "Prerequisite validation report is empty."
+diff --git a/installer/build-installer.ps1 b/installer/build-installer.ps1
+index 4956180..93e5bc1 100644
+--- a/installer/build-installer.ps1
++++ b/installer/build-installer.ps1
+@@ -46,6 +46,10 @@ $ObjDir = Join-Path $InstallerDir "obj"
+ $GeneratedDir = Join-Path $InstallerDir "generated"
+ $StagedInstallDir = Join-Path $GeneratedDir "staged-install"
+ $PrereqsDir = Join-Path $InstallerDir "prereqs"
++$ExternalPayloadDir = Join-Path $OutputDir "payload"
++$ModelPayloadInstallerProj = Join-Path $InstallerDir "tools\ModelPayloadInstaller\ModelPayloadInstaller.csproj"
++$ModelPayloadInstallerPublishDir = Join-Path $GeneratedDir "ModelPayloadInstaller\win-x64"
++$ModelPayloadInstallerExe = Join-Path $ModelPayloadInstallerPublishDir "ModelPayloadInstaller.exe"
+ $DesktopProj = Join-Path $Root "src\Poseidon.Desktop\Poseidon.Desktop.csproj"
+ $ProvisioningProj = Join-Path $Root "src\Poseidon.ProvisioningCheck\Poseidon.ProvisioningCheck.csproj"
+ $ProvisioningExe = Join-Path $ProvisioningPublishDir "provisioning-check.exe"
+@@ -53,6 +57,7 @@ $MachineConfigPath = Join-Path $GeneratedDir "appsettings.user.json"
+ $ModelManifestPath = Join-Path $GeneratedDir "model-manifest.json"
+ $BuildProvenancePath = Join-Path $GeneratedDir "build-provenance.json"
+ $PrerequisiteReportPath = Join-Path $GeneratedDir "prerequisite-validation.json"
++$NativeBackendReportPath = Join-Path $GeneratedDir "native-backend-validation.json"
+ $SigningReportPath = Join-Path $GeneratedDir "signing-report.json"
+ 
+ if ([string]::IsNullOrWhiteSpace($PrerequisitesConfigPath)) {
+@@ -451,6 +456,36 @@ function Test-PrerequisitePayloads {
+     $script:prerequisiteResults | ConvertTo-Json -Depth 8 | Set-Content -Path $PrerequisiteReportPath -Encoding UTF8
+ }
+ 
++function Test-NativeBackendPayloads {
++    $checks = @(
++        [pscustomobject]@{ name = "LLamaSharp.dll"; path = Join-Path $PublishDir "LLamaSharp.dll"; required = -not $Degraded },
++        [pscustomobject]@{ name = "cuda12/llama.dll"; path = Join-Path $PublishDir "llama.dll"; required = -not $Degraded },
++        [pscustomobject]@{ name = "cuda12/ggml.dll"; path = Join-Path $PublishDir "ggml.dll"; required = -not $Degraded },
++        [pscustomobject]@{ name = "cpu-avx2/llama.dll"; path = Join-Path $PublishDir "runtimes\win-x64\native\cpu-avx2\llama.dll"; required = -not $Degraded },
++        [pscustomobject]@{ name = "cpu-avx2/ggml.dll"; path = Join-Path $PublishDir "runtimes\win-x64\native\cpu-avx2\ggml.dll"; required = -not $Degraded }
++    )
++
++    $results = foreach ($check in $checks) {
++        $present = Test-Path $check.path -PathType Leaf
++        $item = if ($present) { Get-Item $check.path } else { $null }
++        [pscustomobject]@{
++            name = $check.name
++            path = $check.path
++            required = [bool]$check.required
++            present = $present
++            sizeBytes = if ($present) { $item.Length } else { 0 }
++            sha256 = if ($present) { (Get-FileHash $check.path -Algorithm SHA256).Hash.ToLowerInvariant() } else { "" }
++        }
++    }
++
++    $results | ConvertTo-Json -Depth 8 | Set-Content -Path $NativeBackendReportPath -Encoding UTF8
++
++    $missing = @($results | Where-Object { $_.required -and (-not $_.present -or $_.sizeBytes -le 0) })
++    if ($missing.Count -gt 0) {
++        throw "Required LLamaSharp native backend payloads are missing: $(@($missing | ForEach-Object { $_.name }) -join ', ')"
++    }
++}
++
+ function Assert-ProductionPolicy([object[]]$ModelEntries) {
+     if ($BuildProfile -ne "Production") {
+         return
+@@ -505,6 +540,8 @@ if (-not (Test-Path (Join-Path $PublishDir "Poseidon.Desktop.exe"))) {
+     throw "Poseidon.Desktop.exe missing from publish output: $PublishDir"
+ }
+ 
++Test-NativeBackendPayloads
++
+ if (-not (Test-Path $ProvisioningExe)) {
+     throw "provisioning-check.exe missing from publish output: $ProvisioningExe"
+ }
+@@ -524,12 +561,18 @@ $llmNames = @(
+ $entries = @()
+ $provenanceEntries = @()
+ $llmModelFileName = ""
++$llmModelSha256 = "0000000000000000000000000000000000000000000000000000000000000000"
++$externalLlmPayload = $false
++$llmPath = ""
+ if (-not $Degraded) {
+     $llmPath = Get-RequiredFile -Directory $ModelsPath -Names $llmNames -Label "LLM model"
+     Assert-ProductionModel -Path $llmPath -MinimumBytes $minimumLlmBytes -Label "LLM model"
+     $llmModelFileName = Split-Path $llmPath -Leaf
+     $entries += New-ModelEntry -SourcePath $llmPath -Type "llm" -Required $true
+     $provenanceEntries += New-ModelProvenanceEntry -SourcePath $llmPath -Type "llm"
++    $llmModelEntry = $entries | Where-Object { $_.type -eq "llm" } | Select-Object -First 1
++    $llmModelSha256 = $llmModelEntry.sha256
++    $externalLlmPayload = (Get-Item $llmPath).Length -ge 2147483648
+ }
+ 
+ $embeddingPath = Get-RequiredFile -Directory $ModelsPath -Names @("arabert.onnx") -Label "Embedding model"
+@@ -560,6 +603,13 @@ if ($LASTEXITCODE -ne 0) {
+     throw "Staged provisioning validation failed."
+ }
+ 
++if ($externalLlmPayload) {
++    dotnet publish $ModelPayloadInstallerProj -c $Configuration -r win-x64 --self-contained true -o $ModelPayloadInstallerPublishDir /p:PublishSingleFile=true
++    if ($LASTEXITCODE -ne 0) { throw "Model payload installer publish failed." }
++    Invoke-ArtifactSigning -Artifacts @($ModelPayloadInstallerExe)
++    $signingResults | ConvertTo-Json -Depth 8 | Set-Content -Path $SigningReportPath -Encoding UTF8
++}
++
+ dotnet restore (Join-Path $InstallerDir "Poseidon.Installer.wixproj") --force
+ if ($LASTEXITCODE -ne 0) { throw "WiX MSI restore failed." }
+ dotnet restore (Join-Path $InstallerDir "Poseidon.Bundle.wixproj") --force
+@@ -571,7 +621,11 @@ $wixProps = @(
+     "/p:ProvisioningCheckPath=$ProvisioningExe",
+     "/p:MachineConfigPath=$MachineConfigPath",
+     "/p:ModelManifestPath=$ModelManifestPath",
+-    "/p:InstallerMode=$mode"
++    "/p:InstallerMode=$mode",
++    "/p:ExternalLlmPayload=$($externalLlmPayload.ToString().ToLowerInvariant())",
++    "/p:ModelPayloadInstallerPath=$ModelPayloadInstallerExe",
++    "/p:LlmModelSha256=$llmModelSha256",
++    "/p:MsiSourcePath=$(Join-Path $OutputDir 'Poseidon.Installer.msi')"
+ )
+ 
+ dotnet build (Join-Path $InstallerDir "Poseidon.Installer.wixproj") -t:Rebuild -c $Configuration -o $OutputDir @wixProps
+@@ -588,6 +642,7 @@ if ($null -eq $bundle) { throw "Burn bundle artifact was not produced." }
+ 
+ $officialMsi = Join-Path $OutputDir "Poseidon.Installer.msi"
+ $officialBundle = Join-Path $OutputDir "Poseidon.Bundle.exe"
++$setupExe = Join-Path $OutputDir "Setup.exe"
+ if (-not $msi.FullName.Equals($officialMsi, [StringComparison]::OrdinalIgnoreCase)) {
+     Copy-Item $msi.FullName $officialMsi -Force
+ }
+@@ -599,16 +654,44 @@ Invoke-ArtifactSigning -Artifacts @($officialMsi, $officialBundle)
+ $signingResults | ConvertTo-Json -Depth 8 | Set-Content -Path $SigningReportPath -Encoding UTF8
+ Write-BuildProvenance -ModelProvenanceEntries $provenanceEntries
+ 
++if ($externalLlmPayload) {
++    $payloadModelsDir = Join-Path $ExternalPayloadDir "Models"
++    Ensure-Directory $payloadModelsDir
++    Copy-Item $llmPath (Join-Path $payloadModelsDir $llmModelFileName) -Force
++}
++
+ Copy-Item $ModelManifestPath (Join-Path $OutputDir "model-manifest.json") -Force
+ Copy-Item $BuildProvenancePath (Join-Path $OutputDir "build-provenance.json") -Force
+ Copy-Item $PrerequisiteReportPath (Join-Path $OutputDir "prerequisite-validation.json") -Force
++Copy-Item $NativeBackendReportPath (Join-Path $OutputDir "native-backend-validation.json") -Force
++Copy-Item $SigningReportPath (Join-Path $OutputDir "signing-report.json") -Force
++Copy-Item $officialBundle $setupExe -Force
++
++$setupSignature = Get-AuthenticodeSignature $setupExe
++if ($BuildProfile -eq "Production" -and $setupSignature.Status -ne "Valid") {
++    throw "Setup.exe failed Authenticode verification after copy: $($setupSignature.Status)"
++}
++$signingResults += [pscustomobject]@{
++    path = $setupExe
++    status = if ($BuildProfile -eq "NonProduction" -and $setupSignature.Status -ne "Valid") { "unsigned-nonproduction" } else { $setupSignature.Status.ToString() }
++    signer = if ($null -eq $setupSignature.SignerCertificate) { "" } else { $setupSignature.SignerCertificate.Subject }
++    thumbprint = if ($null -eq $setupSignature.SignerCertificate) { "" } else { $setupSignature.SignerCertificate.Thumbprint }
++    timestampUrl = if ($setupSignature.Status -eq "Valid") { $TimestampUrl } else { "" }
++}
++$signingResults | ConvertTo-Json -Depth 8 | Set-Content -Path $SigningReportPath -Encoding UTF8
+ Copy-Item $SigningReportPath (Join-Path $OutputDir "signing-report.json") -Force
++Write-BuildProvenance -ModelProvenanceEntries $provenanceEntries
++Copy-Item $BuildProvenancePath (Join-Path $OutputDir "build-provenance.json") -Force
+ 
+ Write-Host ""
+ Write-Host "===============================================" -ForegroundColor Green
+ Write-Host "  Installer build completed" -ForegroundColor Green
+ Write-Host "  MSI    : $officialMsi" -ForegroundColor Green
+ Write-Host "  Bundle : $officialBundle" -ForegroundColor Green
++Write-Host "  Setup  : $setupExe" -ForegroundColor Green
++if ($externalLlmPayload) {
++    Write-Host "  Payload: $ExternalPayloadDir" -ForegroundColor Green
++}
+ Write-Host "  Mode   : $mode" -ForegroundColor Green
+ Write-Host "  Profile: $BuildProfile" -ForegroundColor Green
+ Write-Host "===============================================" -ForegroundColor Green
+diff --git a/src/Poseidon.Api/packages.lock.json b/src/Poseidon.Api/packages.lock.json
+index a9e1d06..98f0cca 100644
+--- a/src/Poseidon.Api/packages.lock.json
++++ b/src/Poseidon.Api/packages.lock.json
+@@ -117,6 +117,11 @@
+           "System.Numerics.Tensors": "8.0.0"
+         }
+       },
++      "LLamaSharp.Backend.Cpu": {
++        "type": "Transitive",
++        "resolved": "0.19.0",
++        "contentHash": "zG6xQCE2072MDqAgXRgyXXe2hWws4y6r40vU/vuxLzzYUXTyQwypPCpm+ZHuFJqL3YmZ9SNOzPFo3LnN7bDNKA=="
++      },
+       "LLamaSharp.Backend.Cuda12": {
+         "type": "Transitive",
+         "resolved": "0.19.0",
+@@ -547,6 +552,7 @@
+         "type": "Project",
+         "dependencies": {
+           "LLamaSharp": "[0.19.0, )",
++          "LLamaSharp.Backend.Cpu": "[0.19.0, )",
+           "LLamaSharp.Backend.Cuda12": "[0.19.0, )",
+           "Microsoft.Data.Sqlite": "[10.0.3, )",
+           "Microsoft.Extensions.Http": "[10.0.3, )",
+diff --git a/src/Poseidon.Desktop/App.xaml.cs b/src/Poseidon.Desktop/App.xaml.cs
+index 3fff224..392fe86 100644
+--- a/src/Poseidon.Desktop/App.xaml.cs
++++ b/src/Poseidon.Desktop/App.xaml.cs
+@@ -73,24 +73,33 @@ public partial class App : System.Windows.Application
+ 
+     protected override async void OnStartup(StartupEventArgs e)
+     {
++        WriteBootstrapLog("INF", "Poseidon desktop launch started.");
+         var debugMode = e.Args.Any(arg => string.Equals(arg, "--debug", StringComparison.OrdinalIgnoreCase));
+ 
++        // Global handlers are attached before any startup work that can fail.
++        DispatcherUnhandledException += OnDispatcherUnhandledException;
++        AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;
++        TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
++
+         // ── Single-Instance Guard ──
+         _singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out bool createdNew);
+         if (!createdNew)
+         {
+             if (await TrySignalRunningInstanceAsync())
+             {
++                WriteBootstrapLog("WRN", "Secondary launch signaled the existing instance.");
+                 Shutdown(0);
+                 return;
+             }
+ 
+             if (TryActivateExistingInstanceWindow())
+             {
++                WriteBootstrapLog("WRN", "Secondary launch activated the existing instance window.");
+                 Shutdown(0);
+                 return;
+             }
+ 
++            WriteBootstrapLog("WRN", "Secondary launch could not activate the existing instance.");
+             System.Windows.MessageBox.Show(
+                 "Poseidon est deja en cours d'execution en arriere-plan. Ouvrez-le depuis la zone de notification.",
+                 "Poseidon",
+@@ -100,11 +109,6 @@ public partial class App : System.Windows.Application
+             return;
+         }
+ 
+-        // ── Global Exception Handlers ──
+-        DispatcherUnhandledException += OnDispatcherUnhandledException;
+-        AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;
+-        TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
+-
+         base.OnStartup(e);
+ 
+         _activationPipeCts = new CancellationTokenSource();
+@@ -201,10 +205,14 @@ public partial class App : System.Windows.Application
+         Log.Logger = loggerConfiguration.CreateLogger();
+ 
+         Log.Information("═══ Poseidon LCDSS Starting ═══");
++        WriteBootstrapLog("INF", $"Serilog initialized. AppLog={paths.AppLogPath}; StartupLog={paths.StartupLogPath}");
+         if (debugMode)
+             Log.Information("Debug mode enabled from --debug flag");
+         if (userConfigValidationError is not null)
++        {
++            WriteBootstrapLog("ERR", $"User configuration is invalid: {userConfigValidationError}");
+             Log.Error("User configuration is invalid and will be handled in Recovery: {Error}", userConfigValidationError);
++        }
+ 
+         // ── Build Host ──
+         _host = Host.CreateDefaultBuilder()
+@@ -611,6 +619,7 @@ public partial class App : System.Windows.Application
+ 
+     private static void LogFatalException(string source, Exception ex)
+     {
++        WriteBootstrapLog("ERR", $"Fatal exception from {source}: {ex}");
+         try
+         {
+             Log.Fatal(ex, "═══ Poseidon LCDSS FATAL ═══ Source: {Source}", source);
+@@ -737,6 +746,25 @@ public partial class App : System.Windows.Application
+             Source = new Uri(resourcePath, UriKind.Relative)
+         });
+     }
++
++    private static void WriteBootstrapLog(string level, string message)
++    {
++        try
++        {
++            var logDir = Path.Combine(
++                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
++                "Poseidon",
++                "Logs");
++            Directory.CreateDirectory(logDir);
++            var line = $"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss.fff zzz} [{level}] [bootstrap] {message}{Environment.NewLine}";
++            File.AppendAllText(Path.Combine(logDir, "startup.log"), line, Encoding.UTF8);
++            File.AppendAllText(Path.Combine(logDir, "app.log"), line, Encoding.UTF8);
++        }
++        catch
++        {
++            // Bootstrap logging must never block launch or mask the original failure.
++        }
++    }
+ }
+ 
+ 
+diff --git a/src/Poseidon.Desktop/Poseidon.Desktop.csproj b/src/Poseidon.Desktop/Poseidon.Desktop.csproj
+index e31ab46..818258d 100644
+--- a/src/Poseidon.Desktop/Poseidon.Desktop.csproj
++++ b/src/Poseidon.Desktop/Poseidon.Desktop.csproj
+@@ -11,6 +11,7 @@
+ 
+   <ItemGroup>
+     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
++    <PackageReference Include="LLamaSharp.Backend.Cpu" Version="0.19.0" ExcludeAssets="runtime;native" GeneratePathProperty="true" />
+     <PackageReference Include="MediatR" Version="14.1.0" />
+     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.7" />
+     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.7" />
+@@ -25,6 +26,14 @@
+     <PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+   </ItemGroup>
+ 
++  <ItemGroup Condition="'$(PkgLLamaSharp_Backend_Cpu)' != ''">
++    <Content Include="$(PkgLLamaSharp_Backend_Cpu)\runtimes\win-x64\native\avx2\*.dll">
++      <Link>runtimes\win-x64\native\cpu-avx2\%(Filename)%(Extension)</Link>
++      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
++      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
++    </Content>
++  </ItemGroup>
++
+   <ItemGroup>
+     <Using Remove="System.Windows.Forms" />
+     <Using Remove="System.Drawing" />
+diff --git a/src/Poseidon.Desktop/Services/FailClosedGuard.cs b/src/Poseidon.Desktop/Services/FailClosedGuard.cs
+index 3f698fe..ec6329d 100644
+--- a/src/Poseidon.Desktop/Services/FailClosedGuard.cs
++++ b/src/Poseidon.Desktop/Services/FailClosedGuard.cs
+@@ -3,6 +3,7 @@ using Poseidon.Domain.Interfaces;
+ using Poseidon.Domain.ValueObjects;
+ using System.IO;
+ using Microsoft.Extensions.Configuration;
++using Microsoft.Extensions.DependencyInjection;
+ using Microsoft.Extensions.Logging;
+ using Microsoft.Extensions.Logging.Abstractions;
+ 
+@@ -22,6 +23,7 @@ public sealed class FailClosedGuard : IDisposable
+     private readonly List<string> _blockReasons = [];
+     private readonly List<string> _warnings = [];
+ 
++    [ActivatorUtilitiesConstructor]
+     public FailClosedGuard(
+         SystemHealthService healthService,
+         ILogger<FailClosedGuard> logger)
+@@ -35,7 +37,7 @@ public sealed class FailClosedGuard : IDisposable
+         _healthCheckTimer.AutoReset = true;
+     }
+ 
+-    public FailClosedGuard(
++    internal FailClosedGuard(
+         ILlmService llm,
+         IVectorStore vectorStore,
+         ModelIntegrityService modelIntegrity,
+diff --git a/src/Poseidon.Desktop/packages.lock.json b/src/Poseidon.Desktop/packages.lock.json
+index e8cf2ea..c673440 100644
+--- a/src/Poseidon.Desktop/packages.lock.json
++++ b/src/Poseidon.Desktop/packages.lock.json
+@@ -8,6 +8,12 @@
+         "resolved": "8.4.2",
+         "contentHash": "WadCzGEc2U+3e20avRLng4qNtt4zoOGWrdUISqJWrHe3/FSnrYjuM5Sb4yQb09LhkBXrrI4Zt3dLKgRMbItsrg=="
+       },
++      "LLamaSharp.Backend.Cpu": {
++        "type": "Direct",
++        "requested": "[0.19.0, )",
++        "resolved": "0.19.0",
++        "contentHash": "zG6xQCE2072MDqAgXRgyXXe2hWws4y6r40vU/vuxLzzYUXTyQwypPCpm+ZHuFJqL3YmZ9SNOzPFo3LnN7bDNKA=="
++      },
+       "MediatR": {
+         "type": "Direct",
+         "requested": "[14.1.0, )",
+@@ -713,6 +719,7 @@
+         "type": "Project",
+         "dependencies": {
+           "LLamaSharp": "[0.19.0, )",
++          "LLamaSharp.Backend.Cpu": "[0.19.0, )",
+           "LLamaSharp.Backend.Cuda12": "[0.19.0, )",
+           "Microsoft.Data.Sqlite": "[10.0.3, )",
+           "Microsoft.Extensions.Http": "[10.0.3, )",
+diff --git a/src/Poseidon.Infrastructure/Llm/LLamaSharpLlmService.cs b/src/Poseidon.Infrastructure/Llm/LLamaSharpLlmService.cs
+index fc0351c..df5e6b2 100644
+--- a/src/Poseidon.Infrastructure/Llm/LLamaSharpLlmService.cs
++++ b/src/Poseidon.Infrastructure/Llm/LLamaSharpLlmService.cs
+@@ -1,4 +1,5 @@
+ ﻿using System.Diagnostics;
++using System.Reflection;
+ using System.Runtime.CompilerServices;
+ using System.Text;
+ using Poseidon.Domain.Interfaces;
+@@ -85,6 +86,13 @@ public sealed class LLamaSharpLlmService : ILlmService, IDisposable
+                     .FirstOrDefault(a => a.GetName().Name == "LLamaSharp")
+                     ?? System.Reflection.Assembly.Load("LLamaSharp");
+ 
++                if (!TryConfigureNativeBackend(llamaAssembly))
++                {
++                    _modelAvailable = false;
++                    _initialized = true;
++                    return;
++                }
++
+                 var modelParamsType = llamaAssembly.GetType("LLama.Common.ModelParams")
+                     ?? throw new TypeLoadException("Cannot find LLama.Common.ModelParams");
+                 var llamaWeightsType = llamaAssembly.GetType("LLama.LLamaWeights")
+@@ -105,8 +113,15 @@ public sealed class LLamaSharpLlmService : ILlmService, IDisposable
+                     ?? throw new InvalidOperationException("Failed to load model weights");
+ 
+                 // Create context
+-                var createContextMethod = llamaWeightsType.GetMethod("CreateContext");
+-                _context = createContextMethod?.Invoke(_model, [modelParams])
++                var createContextMethod = llamaWeightsType.GetMethod("CreateContext")
++                    ?? throw new MissingMethodException("LLama.LLamaWeights", "CreateContext");
++                var createContextArgs = createContextMethod.GetParameters().Length switch
++                {
++                    1 => new object?[] { modelParams },
++                    2 => [modelParams, _logger],
++                    _ => throw new MissingMethodException("LLama.LLamaWeights", "CreateContext")
++                };
++                _context = createContextMethod.Invoke(_model, createContextArgs)
+                     ?? throw new InvalidOperationException("Failed to create context");
+ 
+                 _modelAvailable = true;
+@@ -129,7 +144,7 @@ public sealed class LLamaSharpLlmService : ILlmService, IDisposable
+             catch (Exception ex)
+             {
+                 _initError = $"Failed to load LLamaSharp: {ex.Message}";
+-                _logger.LogError(ex, "LLamaSharp initialization failed. Ensure LLamaSharp NuGet package is installed.");
++                _logger.LogError(ex, "LLamaSharp initialization failed. Ensure LLamaSharp backend native binaries are installed and loadable.");
+                 _modelAvailable = false;
+             }
+ 
+@@ -141,6 +156,129 @@ public sealed class LLamaSharpLlmService : ILlmService, IDisposable
+         }
+     }
+ 
++    private bool TryConfigureNativeBackend(Assembly llamaAssembly)
++    {
++        var baseDirectory = AppContext.BaseDirectory;
++        var nativeRoot = Path.Combine(baseDirectory, "runtimes", "win-x64", "native");
++        var candidateDirectories = new[]
++            {
++                baseDirectory,
++                nativeRoot
++            }
++            .Concat(Directory.Exists(nativeRoot)
++                ? Directory.EnumerateDirectories(nativeRoot, "*", SearchOption.AllDirectories)
++                : [])
++            .Where(Directory.Exists)
++            .Distinct(StringComparer.OrdinalIgnoreCase)
++            .ToArray();
++
++        var nativeDlls = candidateDirectories
++            .SelectMany(dir => Directory.EnumerateFiles(dir, "*.dll", SearchOption.TopDirectoryOnly))
++            .Where(path =>
++            {
++                var name = Path.GetFileName(path);
++                return name.Equals("llama.dll", StringComparison.OrdinalIgnoreCase) ||
++                       name.Equals("ggml.dll", StringComparison.OrdinalIgnoreCase) ||
++                       name.Equals("llava_shared.dll", StringComparison.OrdinalIgnoreCase);
++            })
++            .ToArray();
++
++        if (nativeDlls.Length == 0)
++        {
++            _initError = $"No LLamaSharp backend native DLLs found under {baseDirectory}.";
++            _logger.LogError(_initError);
++            return false;
++        }
++
++        var configType = llamaAssembly.GetType("LLama.Native.NativeLibraryConfig");
++        var instance = configType?.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
++        if (instance is null)
++        {
++            _logger.LogWarning("LLamaSharp NativeLibraryConfig was not available; continuing with default native loader.");
++            return true;
++        }
++
++        try
++        {
++            var instanceType = instance.GetType();
++            var withSearchDirectory = instanceType.GetMethod("WithSearchDirectory", [typeof(string)]);
++            foreach (var directory in candidateDirectories)
++                withSearchDirectory?.Invoke(instance, [directory]);
++
++            var cudaEnabled = ShouldEnableCudaBackend();
++            var explicitBackend = "";
++            if (!cudaEnabled)
++            {
++                var cpuDirectory = candidateDirectories.FirstOrDefault(directory =>
++                    directory.Contains("cpu-avx2", StringComparison.OrdinalIgnoreCase));
++                var cpuLlama = string.IsNullOrWhiteSpace(cpuDirectory)
++                    ? ""
++                    : Path.Combine(cpuDirectory, "llama.dll");
++                var cpuLlava = string.IsNullOrWhiteSpace(cpuDirectory)
++                    ? ""
++                    : Path.Combine(cpuDirectory, "llava_shared.dll");
++
++                if (File.Exists(cpuLlama) && File.Exists(cpuLlava))
++                {
++                    instanceType.GetMethod("WithLibrary", [typeof(string), typeof(string)])
++                        ?.Invoke(instance, [cpuLlama, cpuLlava]);
++                    explicitBackend = cpuLlama;
++                }
++            }
++
++            instanceType.GetMethod("WithCuda", [typeof(bool)])?.Invoke(instance, [cudaEnabled]);
++            instanceType.GetMethod("WithAutoFallback", [typeof(bool)])?.Invoke(instance, [true]);
++
++            _logger.LogInformation(
++                "LLamaSharp native backend preflight passed. CudaEnabled={CudaEnabled}; ExplicitBackend={ExplicitBackend}; SearchDirectories={Directories}; NativeDlls={NativeDlls}",
++                cudaEnabled,
++                explicitBackend,
++                string.Join(";", candidateDirectories),
++                string.Join(";", nativeDlls.Select(Path.GetFileName)));
++            return true;
++        }
++        catch (TargetInvocationException ex) when (ex.InnerException is InvalidOperationException)
++        {
++            _logger.LogWarning(
++                ex.InnerException,
++                "LLamaSharp native backend was already loaded before preflight configuration; continuing with loaded backend.");
++            return true;
++        }
++        catch (InvalidOperationException ex)
++        {
++            _logger.LogWarning(
++                ex,
++                "LLamaSharp native backend was already loaded before preflight configuration; continuing with loaded backend.");
++            return true;
++        }
++    }
++
++    private bool ShouldEnableCudaBackend()
++    {
++        if (_gpuLayers == 0)
++            return false;
++
++        var cudaPaths = Environment.GetEnvironmentVariables()
++            .Cast<System.Collections.DictionaryEntry>()
++            .Where(entry => entry.Key is string key &&
++                            key.StartsWith("CUDA_PATH", StringComparison.OrdinalIgnoreCase))
++            .Select(entry => entry.Value?.ToString() ?? "")
++            .Where(value => !string.IsNullOrWhiteSpace(value))
++            .ToArray();
++
++        if (cudaPaths.Any(path => path.Contains("v12", StringComparison.OrdinalIgnoreCase)))
++            return true;
++
++        if (cudaPaths.Length > 0)
++        {
++            _logger.LogWarning(
++                "CUDA backend disabled because LLamaSharp.Backend.Cuda12 requires a CUDA 12 runtime. Detected CUDA paths: {CudaPaths}",
++                string.Join(";", cudaPaths));
++        }
++
++        return false;
++    }
++
+     public async Task<LlmResponse> GenerateAsync(
+         string systemPrompt, string userPrompt, CancellationToken ct = default)
+     {
+diff --git a/src/Poseidon.Infrastructure/Poseidon.Infrastructure.csproj b/src/Poseidon.Infrastructure/Poseidon.Infrastructure.csproj
+index a7f9970..1c5c28b 100644
+--- a/src/Poseidon.Infrastructure/Poseidon.Infrastructure.csproj
++++ b/src/Poseidon.Infrastructure/Poseidon.Infrastructure.csproj
+@@ -10,6 +10,7 @@
+ 
+   <ItemGroup>
+     <PackageReference Include="LLamaSharp" Version="0.19.0" />
++    <PackageReference Include="LLamaSharp.Backend.Cpu" Version="0.19.0" ExcludeAssets="runtime;native" GeneratePathProperty="true" />
+     <PackageReference Include="LLamaSharp.Backend.Cuda12" Version="0.19.0" />
+     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.3" />
+     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.3" />
+diff --git a/src/Poseidon.Infrastructure/packages.lock.json b/src/Poseidon.Infrastructure/packages.lock.json
+index 3db65a5..014d3c5 100644
+--- a/src/Poseidon.Infrastructure/packages.lock.json
++++ b/src/Poseidon.Infrastructure/packages.lock.json
+@@ -14,6 +14,12 @@
+           "System.Numerics.Tensors": "8.0.0"
+         }
+       },
++      "LLamaSharp.Backend.Cpu": {
++        "type": "Direct",
++        "requested": "[0.19.0, )",
++        "resolved": "0.19.0",
++        "contentHash": "zG6xQCE2072MDqAgXRgyXXe2hWws4y6r40vU/vuxLzzYUXTyQwypPCpm+ZHuFJqL3YmZ9SNOzPFo3LnN7bDNKA=="
++      },
+       "LLamaSharp.Backend.Cuda12": {
+         "type": "Direct",
+         "requested": "[0.19.0, )",
+diff --git a/src/Poseidon.WorkerService/packages.lock.json b/src/Poseidon.WorkerService/packages.lock.json
+index b634caa..ac33114 100644
+--- a/src/Poseidon.WorkerService/packages.lock.json
++++ b/src/Poseidon.WorkerService/packages.lock.json
+@@ -95,6 +95,11 @@
+           "System.Numerics.Tensors": "8.0.0"
+         }
+       },
++      "LLamaSharp.Backend.Cpu": {
++        "type": "Transitive",
++        "resolved": "0.19.0",
++        "contentHash": "zG6xQCE2072MDqAgXRgyXXe2hWws4y6r40vU/vuxLzzYUXTyQwypPCpm+ZHuFJqL3YmZ9SNOzPFo3LnN7bDNKA=="
++      },
+       "LLamaSharp.Backend.Cuda12": {
+         "type": "Transitive",
+         "resolved": "0.19.0",
+@@ -642,6 +647,7 @@
+         "type": "Project",
+         "dependencies": {
+           "LLamaSharp": "[0.19.0, )",
++          "LLamaSharp.Backend.Cpu": "[0.19.0, )",
+           "LLamaSharp.Backend.Cuda12": "[0.19.0, )",
+           "Microsoft.Data.Sqlite": "[10.0.3, )",
+           "Microsoft.Extensions.Http": "[10.0.3, )",
+diff --git a/tests/Poseidon.IntegrationTests/packages.lock.json b/tests/Poseidon.IntegrationTests/packages.lock.json
+index 0b2891e..989b8f0 100644
+--- a/tests/Poseidon.IntegrationTests/packages.lock.json
++++ b/tests/Poseidon.IntegrationTests/packages.lock.json
+@@ -136,6 +136,11 @@
+           "System.Numerics.Tensors": "8.0.0"
+         }
+       },
++      "LLamaSharp.Backend.Cpu": {
++        "type": "Transitive",
++        "resolved": "0.19.0",
++        "contentHash": "zG6xQCE2072MDqAgXRgyXXe2hWws4y6r40vU/vuxLzzYUXTyQwypPCpm+ZHuFJqL3YmZ9SNOzPFo3LnN7bDNKA=="
++      },
+       "LLamaSharp.Backend.Cuda12": {
+         "type": "Transitive",
+         "resolved": "0.19.0",
+@@ -1447,6 +1452,7 @@
+         "type": "Project",
+         "dependencies": {
+           "LLamaSharp": "[0.19.0, )",
++          "LLamaSharp.Backend.Cpu": "[0.19.0, )",
+           "LLamaSharp.Backend.Cuda12": "[0.19.0, )",
+           "Microsoft.Data.Sqlite": "[10.0.3, )",
+           "Microsoft.Extensions.Http": "[10.0.3, )",
+diff --git a/tests/Poseidon.UnitTests/packages.lock.json b/tests/Poseidon.UnitTests/packages.lock.json
+index 31cc2d8..ba5d082 100644
+--- a/tests/Poseidon.UnitTests/packages.lock.json
++++ b/tests/Poseidon.UnitTests/packages.lock.json
+@@ -169,6 +169,11 @@
+           "System.Numerics.Tensors": "8.0.0"
+         }
+       },
++      "LLamaSharp.Backend.Cpu": {
++        "type": "Transitive",
++        "resolved": "0.19.0",
++        "contentHash": "zG6xQCE2072MDqAgXRgyXXe2hWws4y6r40vU/vuxLzzYUXTyQwypPCpm+ZHuFJqL3YmZ9SNOzPFo3LnN7bDNKA=="
++      },
+       "LLamaSharp.Backend.Cuda12": {
+         "type": "Transitive",
+         "resolved": "0.19.0",
+@@ -1860,6 +1865,7 @@
+         "type": "Project",
+         "dependencies": {
+           "CommunityToolkit.Mvvm": "[8.4.2, )",
++          "LLamaSharp.Backend.Cpu": "[0.19.0, )",
+           "MediatR": "[14.1.0, )",
+           "Microsoft.Extensions.Configuration.Json": "[10.0.7, )",
+           "Microsoft.Extensions.DependencyInjection": "[10.0.7, )",
+@@ -1887,6 +1893,7 @@
+         "type": "Project",
+         "dependencies": {
+           "LLamaSharp": "[0.19.0, )",
++          "LLamaSharp.Backend.Cpu": "[0.19.0, )",
+           "LLamaSharp.Backend.Cuda12": "[0.19.0, )",
+           "Microsoft.Data.Sqlite": "[10.0.3, )",
+           "Microsoft.Extensions.Http": "[10.0.3, )",
+diff --git a/tests/scripts/New-CompliancePackage.ps1 b/tests/scripts/New-CompliancePackage.ps1
+index 472fc9b..f3d7422 100644
+--- a/tests/scripts/New-CompliancePackage.ps1
++++ b/tests/scripts/New-CompliancePackage.ps1
+@@ -83,9 +83,11 @@ try {
+     $expectedArtifacts = @(
+         "Poseidon.Installer.msi",
+         "Poseidon.Bundle.exe",
++        "Setup.exe",
+         "model-manifest.json",
+         "build-provenance.json",
+         "prerequisite-validation.json",
++        "native-backend-validation.json",
+         "signing-report.json"
+     )
+ 
+@@ -107,6 +109,7 @@ try {
+     }
+ 
+     $modelManifestPath = Join-Path $installerOutputPath "model-manifest.json"
++    $payloadModelsPath = Join-Path $installerOutputPath "payload\Models"
+     $modelCertification = [ordered]@{
+         present = Test-Path $modelManifestPath -PathType Leaf
+         schemaVersion = $null
+@@ -114,14 +117,104 @@ try {
+         hashesPresent = $false
+         sourcePathLeakage = $false
+     }
++    $externalPayloadCertification = [ordered]@{
++        expected = $false
++        payloadDirectory = $payloadModelsPath
++        directoryPresent = Test-Path $payloadModelsPath -PathType Container
++        manifestPayloadCount = 0
++        payloadFileCount = 0
++        allManifestPayloadsPresent = $true
++        allPayloadHashesMatch = $true
++        pathTraversalDetected = $false
++        files = @()
++    }
+     if ($modelCertification.present) {
+         $modelManifest = Get-Content -Raw $modelManifestPath | ConvertFrom-Json
++        $manifestModels = @($modelManifest.models)
+         $modelCertification.schemaVersion = $modelManifest.schemaVersion
+-        $modelCertification.modelCount = @($modelManifest.models).Count
+-        $modelCertification.hashesPresent = -not (@($modelManifest.models | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.sha256) -or $_.sha256 -notmatch '^[a-f0-9]{64}$' }).Count -gt 0)
+-        $modelCertification.sourcePathLeakage = @($modelManifest.models | Where-Object { $_.PSObject.Properties["sourcePath"] }).Count -gt 0
++        $modelCertification.modelCount = $manifestModels.Count
++        $modelCertification.hashesPresent = -not (@($manifestModels | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.sha256) -or $_.sha256 -notmatch '^[a-f0-9]{64}$' }).Count -gt 0)
++        $modelCertification.sourcePathLeakage = @($manifestModels | Where-Object { $_.PSObject.Properties["sourcePath"] }).Count -gt 0
+         if (-not $modelCertification.hashesPresent) { Add-Blocker "Model manifest contains missing or invalid hashes." }
+         if ($modelCertification.sourcePathLeakage) { Add-Blocker "Model manifest leaks source paths." }
++
++        $externalManifestModels = @($manifestModels | Where-Object { $_.type -eq "llm" -and [int64]$_.sizeBytes -ge 2147483648 })
++        $payloadFiles = @()
++        if ($externalPayloadCertification.directoryPresent) {
++            $payloadFiles = @(Get-ChildItem -Path $payloadModelsPath -File)
++        }
++
++        $externalPayloadCertification.expected = ($externalManifestModels.Count -gt 0 -or $payloadFiles.Count -gt 0)
++        $externalPayloadCertification.manifestPayloadCount = $externalManifestModels.Count
++        $externalPayloadCertification.payloadFileCount = $payloadFiles.Count
++
++        if ($externalPayloadCertification.expected -and -not $externalPayloadCertification.directoryPresent) {
++            $externalPayloadCertification.allManifestPayloadsPresent = $false
++            Add-Blocker "External model payload directory is missing beside Setup.exe."
++        }
++
++        foreach ($model in $externalManifestModels) {
++            $fileName = [string]$model.filename
++            $hasTraversal = [string]::IsNullOrWhiteSpace($fileName) -or
++                [System.IO.Path]::IsPathRooted($fileName) -or
++                $fileName.Contains("..") -or
++                $fileName.Contains("\") -or
++                $fileName.Contains("/") -or
++                ([System.IO.Path]::GetFileName($fileName) -ne $fileName)
++
++            if ($hasTraversal) {
++                $externalPayloadCertification.pathTraversalDetected = $true
++                Add-Blocker "External payload manifest filename is not a safe leaf name: $fileName"
++                continue
++            }
++
++            $payloadPath = Join-Path $payloadModelsPath $fileName
++            $payloadPresent = Test-Path $payloadPath -PathType Leaf
++            $payloadHash = ""
++            $payloadSize = 0L
++            $hashMatches = $false
++            $sizeMatches = $false
++
++            if ($payloadPresent) {
++                $payloadItem = Get-Item $payloadPath
++                $payloadSize = $payloadItem.Length
++                $payloadHash = (Get-FileHash $payloadPath -Algorithm SHA256).Hash.ToLowerInvariant()
++                $hashMatches = ($payloadHash -eq ([string]$model.sha256).ToLowerInvariant())
++                $sizeMatches = ($payloadSize -eq [int64]$model.sizeBytes)
++
++                $artifactChecksums += [pscustomobject]@{
++                    name = "payload/Models/$fileName"
++                    path = $payloadPath
++                    sizeBytes = $payloadSize
++                    sha256 = $payloadHash
++                }
++            }
++
++            if (-not $payloadPresent) {
++                $externalPayloadCertification.allManifestPayloadsPresent = $false
++                Add-Blocker "External model payload missing: payload/Models/$fileName"
++            }
++            elseif (-not $hashMatches) {
++                $externalPayloadCertification.allPayloadHashesMatch = $false
++                Add-Blocker "External model payload hash mismatch: payload/Models/$fileName"
++            }
++            elseif (-not $sizeMatches) {
++                $externalPayloadCertification.allPayloadHashesMatch = $false
++                Add-Blocker "External model payload size mismatch: payload/Models/$fileName"
++            }
++
++            $externalPayloadCertification.files += [pscustomobject]@{
++                name = $fileName
++                path = $payloadPath
++                present = $payloadPresent
++                sizeBytes = $payloadSize
++                manifestSizeBytes = [int64]$model.sizeBytes
++                sha256 = $payloadHash
++                manifestSha256 = ([string]$model.sha256).ToLowerInvariant()
++                hashMatches = $hashMatches
++                sizeMatches = $sizeMatches
++            }
++        }
+     }
+ 
+     $prerequisitePath = Join-Path $installerOutputPath "prerequisite-validation.json"
+@@ -137,6 +230,21 @@ try {
+         if (-not $prerequisiteCertification.allVerified) { Add-Blocker "Prerequisite validation report is incomplete." }
+     }
+ 
++    $nativeBackendPath = Join-Path $installerOutputPath "native-backend-validation.json"
++    $nativeBackendCertification = [ordered]@{
++        present = Test-Path $nativeBackendPath -PathType Leaf
++        requiredCount = 0
++        presentRequiredCount = 0
++        allRequiredPresent = $false
++    }
++    if ($nativeBackendCertification.present) {
++        $nativeBackends = @((Get-Content -Raw $nativeBackendPath | ConvertFrom-Json) | ForEach-Object { $_ })
++        $nativeBackendCertification.requiredCount = @($nativeBackends | Where-Object { $_.required -eq $true }).Count
++        $nativeBackendCertification.presentRequiredCount = @($nativeBackends | Where-Object { $_.required -eq $true -and $_.present -eq $true -and $_.sizeBytes -gt 0 }).Count
++        $nativeBackendCertification.allRequiredPresent = ($nativeBackendCertification.requiredCount -gt 0 -and $nativeBackendCertification.requiredCount -eq $nativeBackendCertification.presentRequiredCount)
++        if (-not $nativeBackendCertification.allRequiredPresent) { Add-Blocker "Native LLamaSharp backend validation report is incomplete." }
++    }
++
+     $signingPath = Join-Path $installerOutputPath "signing-report.json"
+     $signingCertification = [ordered]@{
+         present = Test-Path $signingPath -PathType Leaf
+@@ -174,7 +282,9 @@ try {
+             vulnerablePackagesReported = $hasVulnerabilities
+         }
+         modelManifest = $modelCertification
++        externalPayload = $externalPayloadCertification
+         prerequisites = $prerequisiteCertification
++        nativeBackends = $nativeBackendCertification
+         signing = $signingCertification
+         artifactChecksums = @($artifactChecksums)
+         blockers = @($blockers)
+diff --git a/tests/scripts/Test-EnterpriseDeploymentEvidence.ps1 b/tests/scripts/Test-EnterpriseDeploymentEvidence.ps1
+index 8b84e2d..bb10a58 100644
+--- a/tests/scripts/Test-EnterpriseDeploymentEvidence.ps1
++++ b/tests/scripts/Test-EnterpriseDeploymentEvidence.ps1
+@@ -36,6 +36,16 @@ try {
+         "existing-user-migration",
+         "existing-config-preservation",
+         "external-model-mode",
++        "sccm-external-payload-delivery",
++        "intune-payload-staging",
++        "gpo-network-payload-access",
++        "system-context-payload-resolution",
++        "offline-external-payload-install",
++        "partial-payload-failure",
++        "rollback-after-payload-copy-failure",
++        "upgrade-existing-payload",
++        "repair-missing-payload",
++        "multi-user-external-payload",
+         "full-local-mode",
+         "degraded-mode"
+     )

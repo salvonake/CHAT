@@ -1,0 +1,265 @@
+{
+  "schemaVersion": 1,
+  "release": {
+    "product": "Poseidon",
+    "version": "",
+    "buildProfile": "Production",
+    "installerMode": "full",
+    "gitCommit": "",
+    "provenanceBindingHash": "",
+    "generatedAtUtc": "",
+    "generatedBy": ""
+  },
+  "allowedStatuses": [
+    "PASS",
+    "FAIL",
+    "BLOCKED",
+    "NOT_APPLICABLE"
+  ],
+  "gates": [
+    {
+      "id": "GATE-ARTIFACT-INTEGRITY",
+      "status": "",
+      "summary": "",
+      "requiredEvidence": [
+        "BUILD-EVIDENCE.txt",
+        "TEST-EVIDENCE.txt",
+        "SHA256SUMS.txt",
+        "build-provenance.json"
+      ],
+      "evidence": [],
+      "artifactHashes": [],
+      "blockedReason": "",
+      "approvedBy": ""
+    },
+    {
+      "id": "GATE-SIGNING",
+      "status": "",
+      "summary": "",
+      "requiredEvidence": [
+        "SIGNING-PREFLIGHT.txt",
+        "SIGNING-EVIDENCE.txt",
+        "signing-report.json"
+      ],
+      "evidence": [],
+      "certificate": {
+        "subject": "",
+        "thumbprint": "",
+        "validFromUtc": "",
+        "validToUtc": "",
+        "timestampAuthority": ""
+      },
+      "blockedReason": "",
+      "approvedBy": ""
+    },
+    {
+      "id": "GATE-TOKENIZER",
+      "status": "",
+      "summary": "",
+      "requiredEvidence": [
+        "TOKENIZER-CERTIFICATION.txt",
+        "model-certification-report.json"
+      ],
+      "evidence": [],
+      "tokenizerAssets": [
+        {
+          "fileName": "vocab.txt",
+          "sha256": "",
+          "sizeBytes": 0,
+          "policy": "required"
+        }
+      ],
+      "blockedReason": "",
+      "approvedBy": ""
+    },
+    {
+      "id": "GATE-MODEL",
+      "status": "",
+      "summary": "",
+      "requiredEvidence": [
+        "model-manifest.json",
+        "model-certification-report.json",
+        "PROVISIONING-EVIDENCE.txt"
+      ],
+      "evidence": [],
+      "model": {
+        "fileName": "",
+        "sha256": "",
+        "sizeBytes": 0,
+        "architecture": "",
+        "quantization": "",
+        "ggufVersion": "",
+        "certifiedBackend": "LLamaSharp 0.19.0 CPU AVX2",
+        "certificationReportHash": ""
+      },
+      "blockedReason": "",
+      "approvedBy": ""
+    },
+    {
+      "id": "GATE-SECRETS",
+      "status": "",
+      "summary": "",
+      "requiredEvidence": [
+        "SECRET-PREFLIGHT.txt",
+        "redacted-machine-config.json"
+      ],
+      "evidence": [],
+      "secretRefs": [
+        {
+          "name": "MediatR:LicenseKeySecretRef",
+          "provider": "dpapi",
+          "scope": "",
+          "resolved": false
+        },
+        {
+          "name": "Security:EncryptionPassphraseRef",
+          "provider": "dpapi",
+          "scope": "",
+          "resolved": false
+        }
+      ],
+      "blockedReason": "",
+      "approvedBy": ""
+    },
+    {
+      "id": "GATE-PROVISIONING",
+      "status": "",
+      "summary": "",
+      "requiredEvidence": [
+        "provisioning-check-build.log",
+        "provisioning-check-install.log",
+        "native-backend-validation.json"
+      ],
+      "evidence": [],
+      "blockedReason": "",
+      "approvedBy": ""
+    },
+    {
+      "id": "GATE-DEPLOYMENT",
+      "status": "",
+      "summary": "",
+      "requiredEvidence": [
+        "DEPLOYMENT-EVIDENCE.txt",
+        "enterprise-deployment-evidence.json"
+      ],
+      "evidence": [],
+      "channels": [
+        {
+          "name": "BurnSilent",
+          "status": "",
+          "evidence": []
+        },
+        {
+          "name": "MSISilent",
+          "status": "",
+          "evidence": []
+        },
+        {
+          "name": "SYSTEM",
+          "status": "",
+          "evidence": []
+        },
+        {
+          "name": "SCCM",
+          "status": "",
+          "evidence": []
+        },
+        {
+          "name": "Intune",
+          "status": "",
+          "evidence": []
+        },
+        {
+          "name": "GPO",
+          "status": "",
+          "evidence": []
+        }
+      ],
+      "blockedReason": "",
+      "approvedBy": ""
+    },
+    {
+      "id": "GATE-FAIL-CLOSED",
+      "status": "",
+      "summary": "",
+      "requiredEvidence": [
+        "FAIL-CLOSED-MATRIX.txt"
+      ],
+      "evidence": [],
+      "negativeTests": [],
+      "blockedReason": "",
+      "approvedBy": ""
+    },
+    {
+      "id": "GATE-RUNTIME",
+      "status": "",
+      "summary": "",
+      "requiredEvidence": [
+        "startup.log",
+        "app.log",
+        "RUNTIME-VALIDATION.txt"
+      ],
+      "evidence": [],
+      "runtimeMode": "",
+      "canAsk": false,
+      "errors": 0,
+      "warnings": 0,
+      "blockedReason": "",
+      "approvedBy": ""
+    },
+    {
+      "id": "GATE-AUDIT",
+      "status": "",
+      "summary": "",
+      "requiredEvidence": [
+        "INDEX.txt",
+        "STATUS.txt",
+        "FINAL-INTEGRITY-PASS.txt",
+        "SBOM",
+        "COMPLIANCE-PACKAGE"
+      ],
+      "evidence": [],
+      "releasePackagePath": "",
+      "releasePackageSha256": "",
+      "blockedReason": "",
+      "approvedBy": ""
+    },
+    {
+      "id": "GATE-RELEASE-AUTHORITY",
+      "status": "",
+      "summary": "",
+      "requiredEvidence": [
+        "RELEASE-APPROVAL.txt"
+      ],
+      "evidence": [],
+      "approvals": [
+        {
+          "role": "ReleaseOwner",
+          "name": "",
+          "approvedAtUtc": "",
+          "artifactHash": ""
+        },
+        {
+          "role": "SecurityOwner",
+          "name": "",
+          "approvedAtUtc": "",
+          "artifactHash": ""
+        },
+        {
+          "role": "DeploymentOwner",
+          "name": "",
+          "approvedAtUtc": "",
+          "artifactHash": ""
+        },
+        {
+          "role": "GovernanceAuthority",
+          "name": "",
+          "approvedAtUtc": "",
+          "artifactHash": ""
+        }
+      ],
+      "blockedReason": "",
+      "approvedBy": ""
+    }
+  ]
+}

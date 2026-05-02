@@ -14,6 +14,12 @@
           "System.Numerics.Tensors": "8.0.0"
         }
       },
+      "LLamaSharp.Backend.Cpu": {
+        "type": "Direct",
+        "requested": "[0.19.0, )",
+        "resolved": "0.19.0",
+        "contentHash": "zG6xQCE2072MDqAgXRgyXXe2hWws4y6r40vU/vuxLzzYUXTyQwypPCpm+ZHuFJqL3YmZ9SNOzPFo3LnN7bDNKA=="
+      },
       "LLamaSharp.Backend.Cuda12": {
         "type": "Direct",
         "requested": "[0.19.0, )",

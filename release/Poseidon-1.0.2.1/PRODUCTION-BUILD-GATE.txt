@@ -1,0 +1,27 @@
+﻿Production Build Gate Result: FAIL-CLOSED
+Version: 1.0.2.1
+TimestampUtc: 2026-05-01T15:36:08.3573127Z
+Command: .\installer\build-installer.ps1 -Configuration Release -BuildProfile Production -ModelsPath .\installer\models
+
+Preflight Results:
+- dotnet restore Poseidon.sln --locked-mode: PASS
+- dotnet build Poseidon.sln -c Release --no-restore: PASS
+- dotnet test tests/Poseidon.UnitTests/Poseidon.UnitTests.csproj -c Release --no-build: PASS, 870 tests passed
+
+Failure Point:
+- Production installer build stopped before release artifact acceptance.
+- Error: signtool.exe was not found. Production builds must sign release artifacts.
+
+Classification:
+- Governance / signing infrastructure blocker.
+- Not a runtime, installer logic, model, provisioning, or packaging-determinism defect.
+
+Required Remediation:
+- Install/provision Windows SDK signtool.exe on the release build host.
+- Provide approved production code-signing certificate and timestamp authority.
+- Re-run the Production build without unsigned bypass flags.
+- Re-run Validate-InstallerArtifacts.ps1 -BuildProfile Production -InstallerMode full.
+
+Status Impact:
+- Existing release bundle remains NONPRODUCTION CERTIFICATION PACKAGE.
+- Production release artifacts are not generated or approved in this pass.

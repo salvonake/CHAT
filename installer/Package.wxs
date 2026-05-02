@@ -53,9 +53,12 @@
       <ComponentRef Id="ProvisioningCheckComp"/>
       <ComponentRef Id="MachineConfigComp"/>
       <ComponentRef Id="ModelManifestComp"/>
+      <?if $(var.InstallerMode) = full ?>
+      <ComponentRef Id="ModelCertificationReportComp"/>
+      <?endif?>
     </Feature>
 
-    <?if $(var.InstallerMode) = full ?>
+    <?if $(var.InstallerMode) = full And $(var.ExternalLlmPayload) != true ?>
     <Feature Id="ModelFeature"
              Title="Modele LLM - Qwen 2.5 14B Q5_K_M"
              Description="Modele de langage (~10 Go) requis pour les reponses juridiques"
@@ -86,7 +89,7 @@
 
     <CustomAction Id="RunProvisioningCheck"
                   FileRef="ProvisioningCheckExe"
-                  ExeCommand="--config &quot;[INSTALLDIR]appsettings.user.json&quot; --manifest &quot;[ModelsDir]model-manifest.json&quot; --install-dir &quot;[INSTALLDIR].&quot; --mode &quot;$(var.InstallerMode)&quot; --log &quot;[LocalAppDataFolder]Poseidon\Logs\startup.log&quot;"
+                  ExeCommand="--config &quot;[INSTALLDIR]appsettings.user.json&quot; --manifest &quot;[ModelsDir]model-manifest.json&quot; --certification-report &quot;[ModelsDir]model-certification-report.json&quot; --install-dir &quot;[INSTALLDIR].&quot; --mode &quot;$(var.InstallerMode)&quot; --log &quot;[LocalAppDataFolder]Poseidon\Logs\startup.log&quot;"
                   Execute="deferred"
                   Return="check"
                   Impersonate="no"/>
@@ -230,13 +233,24 @@
             Name="model-manifest.json"
             KeyPath="yes"/>
     </Component>
+
+    <?if $(var.InstallerMode) = full ?>
+    <Component Id="ModelCertificationReportComp"
+               Directory="ModelsDir"
+               Guid="E2FE0E8F-55FB-43F4-AD75-47D89CB84D66">
+      <File Id="ModelCertificationReportFile"
+            Source="$(var.ModelCertificationReportPath)"
+            Name="model-certification-report.json"
+            KeyPath="yes"/>
+    </Component>
+    <?endif?>
   </Fragment>
 
   <!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
        MODEL FILES (selectable feature)
        â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
   <Fragment>
-    <?if $(var.InstallerMode) = full ?>
+    <?if $(var.InstallerMode) = full And $(var.ExternalLlmPayload) != true ?>
     <ComponentGroup Id="ModelFiles" Directory="ModelsDir">
       <Component Id="LlmModelFileComp"
                  Guid="E5F6A7B8-C9D0-1234-EFAB-567890123456">

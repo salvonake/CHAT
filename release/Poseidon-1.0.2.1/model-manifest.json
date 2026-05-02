@@ -1,0 +1,27 @@
+﻿{
+    "schemaVersion":  2,
+    "generatedAtUtc":  "2026-04-30T15:13:19.0923731Z",
+    "mode":  "full",
+    "packaging":  "wix-burn",
+    "buildProfile":  "NonProduction",
+    "models":  [
+                   {
+                       "filename":  "Qwen_Qwen3.5-9B-Q5_K_M.gguf",
+                       "type":  "llm",
+                       "required":  true,
+                       "mode":  "full",
+                       "sizeBytes":  637699456,
+                       "sha256":  "da3087fb14aede55fde6eb81a0e55e886810e43509ec82ecdc7aa5d62a03b556",
+                       "targetPath":  "[INSTALLDIR]Models\\Qwen_Qwen3.5-9B-Q5_K_M.gguf"
+                   },
+                   {
+                       "filename":  "arabert.onnx",
+                       "type":  "embedding",
+                       "required":  true,
+                       "mode":  "full",
+                       "sizeBytes":  538762298,
+                       "sha256":  "342495c4ae30026f8162da811dfbc7cc1a009175b8fe29572385e515eb323680",
+                       "targetPath":  "[INSTALLDIR]Models\\arabert.onnx"
+                   }
+               ]
+}

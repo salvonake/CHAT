@@ -8,6 +8,12 @@
         "resolved": "8.4.2",
         "contentHash": "WadCzGEc2U+3e20avRLng4qNtt4zoOGWrdUISqJWrHe3/FSnrYjuM5Sb4yQb09LhkBXrrI4Zt3dLKgRMbItsrg=="
       },
+      "LLamaSharp.Backend.Cpu": {
+        "type": "Direct",
+        "requested": "[0.19.0, )",
+        "resolved": "0.19.0",
+        "contentHash": "zG6xQCE2072MDqAgXRgyXXe2hWws4y6r40vU/vuxLzzYUXTyQwypPCpm+ZHuFJqL3YmZ9SNOzPFo3LnN7bDNKA=="
+      },
       "MediatR": {
         "type": "Direct",
         "requested": "[14.1.0, )",
@@ -713,6 +719,7 @@
         "type": "Project",
         "dependencies": {
           "LLamaSharp": "[0.19.0, )",
+          "LLamaSharp.Backend.Cpu": "[0.19.0, )",
           "LLamaSharp.Backend.Cuda12": "[0.19.0, )",
           "Microsoft.Data.Sqlite": "[10.0.3, )",
           "Microsoft.Extensions.Http": "[10.0.3, )",

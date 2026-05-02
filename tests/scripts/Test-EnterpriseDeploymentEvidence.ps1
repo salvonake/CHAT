@@ -36,6 +36,16 @@ try {
         "existing-user-migration",
         "existing-config-preservation",
         "external-model-mode",
+        "sccm-external-payload-delivery",
+        "intune-payload-staging",
+        "gpo-network-payload-access",
+        "system-context-payload-resolution",
+        "offline-external-payload-install",
+        "partial-payload-failure",
+        "rollback-after-payload-copy-failure",
+        "upgrade-existing-payload",
+        "repair-missing-payload",
+        "multi-user-external-payload",
         "full-local-mode",
         "degraded-mode"
     )

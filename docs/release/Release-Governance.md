@@ -9,6 +9,8 @@ Poseidon releases are promoted only from the authoritative Poseidon solution and
 - Official artifacts:
   - `Poseidon.Installer.msi`
   - `Poseidon.Bundle.exe`
+  - `Setup.exe`
+  - `payload/Models/<LLM model>` when full local mode uses an external LLM payload
   - `model-manifest.json`
   - `build-provenance.json`
   - `prerequisite-validation.json`
@@ -44,6 +46,26 @@ dotnet test tests/Poseidon.UnitTests/Poseidon.UnitTests.csproj -c Release --no-b
 ./tests/scripts/Test-FinalEnterpriseCertification.ps1 -RequireCertified
 ```
 
+The authoritative production pass/fail contract is defined in `docs/release/Certification-Gate-Checklist.md`. Release evidence must also populate `deploy/enterprise/certification-gate-checklist.template.json` or an equivalent schema-compatible gate manifest.
+
+## Deployment Lab Acceptance Requirement
+
+No production release is valid without a completed Deployment Lab Acceptance Manifest. The manifest template is `deploy/enterprise/deployment-lab-acceptance.manifest.template.json`, and its operating procedure is documented in `docs/release/Deployment-Lab-Acceptance.md`.
+
+The manifest must reference:
+
+- the reviewed Certification Gate Checklist,
+- the populated certification gate manifest,
+- the immutable build identity,
+- signed artifact hashes,
+- signature and timestamp validation,
+- provisioning validation,
+- fail-closed runtime enforcement evidence,
+- enterprise deployment lifecycle evidence,
+- release authority attestation.
+
+The manifest defaults to `BLOCKED`. Release authority may mark it `PASS` only after all required gates pass with evidence.
+
 ## Required Installer Gates
 
 Production release promotion requires:
@@ -54,8 +76,12 @@ Production release promotion requires:
 - signed `provisioning-check.exe`
 - signed `Poseidon.Installer.msi`
 - signed `Poseidon.Bundle.exe`
+- signed `Setup.exe`
+- signed `ModelPayloadInstaller.exe` when external LLM payload mode is used
 - successful `Validate-InstallerArtifacts.ps1 -BuildProfile Production`
 - staged `provisioning-check.exe` validation
+- reviewed packaging warning evidence with no unsuppressed certification-impacting warnings
+- external LLM payload certification when the model is distributed outside the MSI because of package size limits
 
 ## Approval Gates
 
@@ -74,3 +100,9 @@ A release cannot be promoted unless the release owner attaches:
 - SBOM or dependency inventory
 - artifact checksums
 - installer lifecycle smoke matrix
+- external payload deployment matrix when applicable
+- signed compliance package
+- governance authority signoff
+
+Release authority remains blocked until all approval gates are attached and
+`Test-FinalEnterpriseCertification.ps1 -RequireCertified` passes.

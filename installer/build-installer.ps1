@@ -24,6 +24,11 @@ param(
     [switch]$UnsignedDevelopmentBuild,
     [string]$PrerequisitesConfigPath = "",
     [string]$EncryptionPassphrase = "",
+    [string]$MediatRLicenseKey = "",
+    [string]$MediatRLicenseKeySecretRef = "",
+    [switch]$AllowUncertifiedModel,
+    [switch]$AllowTokenizerWarning,
+    [string]$TokenizerPath = "",
     [string]$SignToolPath = "",
     [string]$SigningCertificateThumbprint = "",
     [string]$SigningCertificatePath = "",
@@ -46,13 +51,19 @@ $ObjDir = Join-Path $InstallerDir "obj"
 $GeneratedDir = Join-Path $InstallerDir "generated"
 $StagedInstallDir = Join-Path $GeneratedDir "staged-install"
 $PrereqsDir = Join-Path $InstallerDir "prereqs"
+$ExternalPayloadDir = Join-Path $OutputDir "payload"
+$ModelPayloadInstallerProj = Join-Path $InstallerDir "tools\ModelPayloadInstaller\ModelPayloadInstaller.csproj"
+$ModelPayloadInstallerPublishDir = Join-Path $GeneratedDir "ModelPayloadInstaller\win-x64"
+$ModelPayloadInstallerExe = Join-Path $ModelPayloadInstallerPublishDir "ModelPayloadInstaller.exe"
 $DesktopProj = Join-Path $Root "src\Poseidon.Desktop\Poseidon.Desktop.csproj"
 $ProvisioningProj = Join-Path $Root "src\Poseidon.ProvisioningCheck\Poseidon.ProvisioningCheck.csproj"
 $ProvisioningExe = Join-Path $ProvisioningPublishDir "provisioning-check.exe"
 $MachineConfigPath = Join-Path $GeneratedDir "appsettings.user.json"
 $ModelManifestPath = Join-Path $GeneratedDir "model-manifest.json"
+$ModelCertificationReportPath = Join-Path $GeneratedDir "model-certification-report.json"
 $BuildProvenancePath = Join-Path $GeneratedDir "build-provenance.json"
 $PrerequisiteReportPath = Join-Path $GeneratedDir "prerequisite-validation.json"
+$NativeBackendReportPath = Join-Path $GeneratedDir "native-backend-validation.json"
 $SigningReportPath = Join-Path $GeneratedDir "signing-report.json"
 
 if ([string]::IsNullOrWhiteSpace($PrerequisitesConfigPath)) {
@@ -63,8 +74,26 @@ if ([string]::IsNullOrWhiteSpace($EncryptionPassphrase)) {
     $EncryptionPassphrase = [Environment]::GetEnvironmentVariable("POSEIDON_INSTALLER_ENCRYPTION_PASSPHRASE")
 }
 
+if ([string]::IsNullOrWhiteSpace($MediatRLicenseKey)) {
+    $MediatRLicenseKey = [Environment]::GetEnvironmentVariable("POSEIDON_MEDIATR_LICENSE_KEY")
+}
+
+if ([string]::IsNullOrWhiteSpace($MediatRLicenseKeySecretRef)) {
+    $MediatRLicenseKeySecretRef = [Environment]::GetEnvironmentVariable("POSEIDON_MEDIATR_LICENSE_KEY_REF")
+}
+
 if ($BuildProfile -eq "NonProduction" -and [string]::IsNullOrWhiteSpace($EncryptionPassphrase)) {
     $EncryptionPassphrase = "NonProductionInstallerLocalKey!2026_CiPackagingOnly"
+}
+
+if ($BuildProfile -eq "Production") {
+    if (-not [string]::IsNullOrWhiteSpace($MediatRLicenseKey)) {
+        throw "Production builds must not embed plaintext MediatR license keys. Use -MediatRLicenseKeySecretRef or POSEIDON_MEDIATR_LICENSE_KEY_REF."
+    }
+
+    if ([string]::IsNullOrWhiteSpace($MediatRLicenseKeySecretRef)) {
+        $MediatRLicenseKeySecretRef = "dpapi:$($SecretScope):Poseidon/MediatRLicense:$SecretKeyVersion"
+    }
 }
 
 if ($BuildProfile -eq "Production" -and $UnsignedDevelopmentBuild) {
@@ -73,6 +102,14 @@ if ($BuildProfile -eq "Production" -and $UnsignedDevelopmentBuild) {
 
 if ($AllowTestModels -and $BuildProfile -eq "Production") {
     throw "-AllowTestModels is only valid with -BuildProfile NonProduction."
+}
+
+if ($BuildProfile -eq "Production" -and $AllowUncertifiedModel) {
+    throw "-AllowUncertifiedModel is only valid with -BuildProfile NonProduction."
+}
+
+if ($BuildProfile -eq "Production" -and $AllowTokenizerWarning) {
+    throw "-AllowTokenizerWarning is only valid with -BuildProfile NonProduction."
 }
 
 if (-not [System.IO.Path]::IsPathRooted($ModelsPath)) {
@@ -85,10 +122,15 @@ if (-not [System.IO.Path]::IsPathRooted($ModelsPath)) {
     }
 }
 
+if (-not [string]::IsNullOrWhiteSpace($TokenizerPath) -and -not [System.IO.Path]::IsPathRooted($TokenizerPath)) {
+    $TokenizerPath = Join-Path $Root $TokenizerPath
+}
+
 $mode = if ($Degraded) { "degraded" } else { "full" }
 $minimumLlmBytes = 100MB
 $minimumEmbeddingBytes = 1MB
-$manifestSchemaVersion = 2
+$manifestSchemaVersion = 3
+$certifiedBackend = "LLamaSharp 0.19.0 CPU AVX2"
 $prerequisiteResults = @()
 $signingResults = @()
 
@@ -153,7 +195,7 @@ function Assert-StrongSecret([string]$Value, [string]$Label) {
     }
 }
 
-function New-ModelEntry([string]$SourcePath, [string]$Type, [bool]$Required) {
+function New-ModelEntry([string]$SourcePath, [string]$Type, [bool]$Required, [object]$CertificationReport = $null, [string]$CertificationReportHash = "") {
     $item = Get-Item $SourcePath
     $hash = (Get-FileHash $SourcePath -Algorithm SHA256).Hash.ToLowerInvariant()
     $target = if ($Type -eq "llm") {
@@ -162,7 +204,7 @@ function New-ModelEntry([string]$SourcePath, [string]$Type, [bool]$Required) {
         "[INSTALLDIR]Models\arabert.onnx"
     }
 
-    [pscustomobject]@{
+    $entry = [ordered]@{
         filename = $item.Name
         type = $Type
         required = $Required
@@ -171,6 +213,28 @@ function New-ModelEntry([string]$SourcePath, [string]$Type, [bool]$Required) {
         sha256 = $hash
         targetPath = $target
     }
+
+    if ($Type -eq "llm") {
+        if ($null -eq $CertificationReport) {
+            throw "LLM model entry requires a certification report."
+        }
+
+        if ([string]::IsNullOrWhiteSpace($CertificationReportHash)) {
+            throw "LLM model entry requires a certification report hash."
+        }
+
+        $entry.architecture = $CertificationReport.architecture
+        $entry.quantization = $CertificationReport.quantization
+        $entry.ggufVersion = $CertificationReport.ggufVersion
+        $entry.certifiedBackend = $CertificationReport.backend
+        $entry.certifiedAtUtc = $CertificationReport.generatedAtUtc
+        $entry.compatibilityStatus = $CertificationReport.compatibilityStatus
+        $entry.tokenizerPolicy = $CertificationReport.tokenizer.policy
+        $entry.warningAccepted = [bool]$CertificationReport.tokenizer.warningAccepted
+        $entry.certificationReportHash = $CertificationReportHash
+    }
+
+    [pscustomobject]$entry
 }
 
 function New-ModelProvenanceEntry([string]$SourcePath, [string]$Type) {
@@ -181,6 +245,46 @@ function New-ModelProvenanceEntry([string]$SourcePath, [string]$Type) {
         sourcePath = $item.FullName
         sourceSha256 = (Get-FileHash $SourcePath -Algorithm SHA256).Hash.ToLowerInvariant()
         sourceSizeBytes = $item.Length
+    }
+}
+
+function Invoke-ModelCertification([string]$ModelPath) {
+    $policy = if ($BuildProfile -eq "Production") { "required" } else { "warning" }
+    $resolvedTokenizerPath = $TokenizerPath
+    if ([string]::IsNullOrWhiteSpace($resolvedTokenizerPath)) {
+        $resolvedTokenizerPath = Join-Path $ModelsPath "vocab.txt"
+    }
+
+    $certificationArgs = @(
+        "--certify-model", $ModelPath,
+        "--report", $ModelCertificationReportPath,
+        "--build-profile", $BuildProfile,
+        "--backend", $certifiedBackend,
+        "--tokenizer-policy", $policy,
+        "--tokenizer-path", $resolvedTokenizerPath,
+        "--allow-uncertified-model", $AllowUncertifiedModel.ToString().ToLowerInvariant(),
+        "--warning-accepted", $AllowTokenizerWarning.ToString().ToLowerInvariant(),
+        "--log", (Join-Path $GeneratedDir "model-certification.log")
+    )
+
+    $certificationOutput = & $ProvisioningExe @certificationArgs 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        $certificationOutput | ForEach-Object { Write-Host $_ }
+        throw "Model certification failed."
+    }
+    $certificationOutput | ForEach-Object { Write-Host $_ }
+
+    if (-not (Test-Path $ModelCertificationReportPath -PathType Leaf)) {
+        throw "Model certification report was not generated."
+    }
+
+    $report = Get-Content -Raw $ModelCertificationReportPath | ConvertFrom-Json
+    $reportHash = (Get-FileHash $ModelCertificationReportPath -Algorithm SHA256).Hash.ToLowerInvariant()
+
+    [pscustomobject]@{
+        report = $report
+        hash = $reportHash
+        tokenizerPath = $resolvedTokenizerPath
     }
 }
 
@@ -223,6 +327,10 @@ function Write-MachineConfig([object[]]$ModelEntries) {
             Provider = "dpapi"
             Scope = $SecretScope
             ValidationMode = if ($BuildProfile -eq "Production") { "Required" } else { "DevelopmentPlaintext" }
+        }
+        MediatR = [ordered]@{
+            LicenseKey = if ($BuildProfile -eq "Production") { "" } else { $MediatRLicenseKey }
+            LicenseKeySecretRef = if ($BuildProfile -eq "Production") { $MediatRLicenseKeySecretRef } else { "" }
         }
         Security = [ordered]@{
             EncryptionEnabled = $true
@@ -273,6 +381,14 @@ function Write-BuildProvenance([object[]]$ModelProvenanceEntries) {
         mode = $mode
         gitCommit = (& git -C $Root rev-parse HEAD 2>$null)
         models = $ModelProvenanceEntries
+        modelCertification = [ordered]@{
+            reportPath = if (Test-Path $ModelCertificationReportPath -PathType Leaf) { $ModelCertificationReportPath } else { "" }
+            reportSha256 = if (Test-Path $ModelCertificationReportPath -PathType Leaf) { (Get-FileHash $ModelCertificationReportPath -Algorithm SHA256).Hash.ToLowerInvariant() } else { "" }
+            certifiedBackend = $certifiedBackend
+            tokenizerPolicy = if ($BuildProfile -eq "Production") { "required" } else { "warning" }
+            tokenizerWarningAccepted = [bool]$AllowTokenizerWarning
+            uncertifiedModelOverride = [bool]$AllowUncertifiedModel
+        }
         prerequisites = $prerequisiteResults
         signing = $signingResults
         secretStorage = [ordered]@{
@@ -280,6 +396,8 @@ function Write-BuildProvenance([object[]]$ModelProvenanceEntries) {
             scope = $SecretScope
             keyVersion = $SecretKeyVersion
             productionPlaintextSecrets = $false
+            mediatRLicenseSecretRefConfigured = -not [string]::IsNullOrWhiteSpace($MediatRLicenseKeySecretRef)
+            mediatRPlaintextLicenseConfigured = $BuildProfile -ne "Production" -and -not [string]::IsNullOrWhiteSpace($MediatRLicenseKey)
         }
     }
 
@@ -451,6 +569,36 @@ function Test-PrerequisitePayloads {
     $script:prerequisiteResults | ConvertTo-Json -Depth 8 | Set-Content -Path $PrerequisiteReportPath -Encoding UTF8
 }
 
+function Test-NativeBackendPayloads {
+    $checks = @(
+        [pscustomobject]@{ name = "LLamaSharp.dll"; path = Join-Path $PublishDir "LLamaSharp.dll"; required = -not $Degraded },
+        [pscustomobject]@{ name = "cuda12/llama.dll"; path = Join-Path $PublishDir "llama.dll"; required = -not $Degraded },
+        [pscustomobject]@{ name = "cuda12/ggml.dll"; path = Join-Path $PublishDir "ggml.dll"; required = -not $Degraded },
+        [pscustomobject]@{ name = "cpu-avx2/llama.dll"; path = Join-Path $PublishDir "runtimes\win-x64\native\cpu-avx2\llama.dll"; required = -not $Degraded },
+        [pscustomobject]@{ name = "cpu-avx2/ggml.dll"; path = Join-Path $PublishDir "runtimes\win-x64\native\cpu-avx2\ggml.dll"; required = -not $Degraded }
+    )
+
+    $results = foreach ($check in $checks) {
+        $present = Test-Path $check.path -PathType Leaf
+        $item = if ($present) { Get-Item $check.path } else { $null }
+        [pscustomobject]@{
+            name = $check.name
+            path = $check.path
+            required = [bool]$check.required
+            present = $present
+            sizeBytes = if ($present) { $item.Length } else { 0 }
+            sha256 = if ($present) { (Get-FileHash $check.path -Algorithm SHA256).Hash.ToLowerInvariant() } else { "" }
+        }
+    }
+
+    $results | ConvertTo-Json -Depth 8 | Set-Content -Path $NativeBackendReportPath -Encoding UTF8
+
+    $missing = @($results | Where-Object { $_.required -and (-not $_.present -or $_.sizeBytes -le 0) })
+    if ($missing.Count -gt 0) {
+        throw "Required LLamaSharp native backend payloads are missing: $(@($missing | ForEach-Object { $_.name }) -join ', ')"
+    }
+}
+
 function Assert-ProductionPolicy([object[]]$ModelEntries) {
     if ($BuildProfile -ne "Production") {
         return
@@ -505,6 +653,8 @@ if (-not (Test-Path (Join-Path $PublishDir "Poseidon.Desktop.exe"))) {
     throw "Poseidon.Desktop.exe missing from publish output: $PublishDir"
 }
 
+Test-NativeBackendPayloads
+
 if (-not (Test-Path $ProvisioningExe)) {
     throw "provisioning-check.exe missing from publish output: $ProvisioningExe"
 }
@@ -524,12 +674,19 @@ $llmNames = @(
 $entries = @()
 $provenanceEntries = @()
 $llmModelFileName = ""
+$llmModelSha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+$externalLlmPayload = $false
+$llmPath = ""
 if (-not $Degraded) {
     $llmPath = Get-RequiredFile -Directory $ModelsPath -Names $llmNames -Label "LLM model"
     Assert-ProductionModel -Path $llmPath -MinimumBytes $minimumLlmBytes -Label "LLM model"
+    $llmCertification = Invoke-ModelCertification -ModelPath $llmPath
     $llmModelFileName = Split-Path $llmPath -Leaf
-    $entries += New-ModelEntry -SourcePath $llmPath -Type "llm" -Required $true
+    $entries += New-ModelEntry -SourcePath $llmPath -Type "llm" -Required $true -CertificationReport $llmCertification.report -CertificationReportHash $llmCertification.hash
     $provenanceEntries += New-ModelProvenanceEntry -SourcePath $llmPath -Type "llm"
+    $llmModelEntry = $entries | Where-Object { $_.type -eq "llm" } | Select-Object -First 1
+    $llmModelSha256 = $llmModelEntry.sha256
+    $externalLlmPayload = (Get-Item $llmPath).Length -ge 2147483648
 }
 
 $embeddingPath = Get-RequiredFile -Directory $ModelsPath -Names @("arabert.onnx") -Label "Embedding model"
@@ -550,6 +707,7 @@ $signingResults | ConvertTo-Json -Depth 8 | Set-Content -Path $SigningReportPath
 $checkArgs = @(
     "--config", $MachineConfigPath,
     "--manifest", $ModelManifestPath,
+    "--certification-report", $ModelCertificationReportPath,
     "--mode", $mode,
     "--install-dir", $StagedInstallDir,
     "--allow-deferred-secrets", "true",
@@ -558,6 +716,13 @@ $checkArgs = @(
 & $ProvisioningExe @checkArgs
 if ($LASTEXITCODE -ne 0) {
     throw "Staged provisioning validation failed."
+}
+
+if ($externalLlmPayload) {
+    dotnet publish $ModelPayloadInstallerProj -c $Configuration -r win-x64 --self-contained true -o $ModelPayloadInstallerPublishDir /p:PublishSingleFile=true
+    if ($LASTEXITCODE -ne 0) { throw "Model payload installer publish failed." }
+    Invoke-ArtifactSigning -Artifacts @($ModelPayloadInstallerExe)
+    $signingResults | ConvertTo-Json -Depth 8 | Set-Content -Path $SigningReportPath -Encoding UTF8
 }
 
 dotnet restore (Join-Path $InstallerDir "Poseidon.Installer.wixproj") --force
@@ -571,7 +736,12 @@ $wixProps = @(
     "/p:ProvisioningCheckPath=$ProvisioningExe",
     "/p:MachineConfigPath=$MachineConfigPath",
     "/p:ModelManifestPath=$ModelManifestPath",
-    "/p:InstallerMode=$mode"
+    "/p:ModelCertificationReportPath=$ModelCertificationReportPath",
+    "/p:InstallerMode=$mode",
+    "/p:ExternalLlmPayload=$($externalLlmPayload.ToString().ToLowerInvariant())",
+    "/p:ModelPayloadInstallerPath=$ModelPayloadInstallerExe",
+    "/p:LlmModelSha256=$llmModelSha256",
+    "/p:MsiSourcePath=$(Join-Path $OutputDir 'Poseidon.Installer.msi')"
 )
 
 dotnet build (Join-Path $InstallerDir "Poseidon.Installer.wixproj") -t:Rebuild -c $Configuration -o $OutputDir @wixProps
@@ -588,6 +758,7 @@ if ($null -eq $bundle) { throw "Burn bundle artifact was not produced." }
 
 $officialMsi = Join-Path $OutputDir "Poseidon.Installer.msi"
 $officialBundle = Join-Path $OutputDir "Poseidon.Bundle.exe"
+$setupExe = Join-Path $OutputDir "Setup.exe"
 if (-not $msi.FullName.Equals($officialMsi, [StringComparison]::OrdinalIgnoreCase)) {
     Copy-Item $msi.FullName $officialMsi -Force
 }
@@ -599,16 +770,47 @@ Invoke-ArtifactSigning -Artifacts @($officialMsi, $officialBundle)
 $signingResults | ConvertTo-Json -Depth 8 | Set-Content -Path $SigningReportPath -Encoding UTF8
 Write-BuildProvenance -ModelProvenanceEntries $provenanceEntries
 
+if ($externalLlmPayload) {
+    $payloadModelsDir = Join-Path $ExternalPayloadDir "Models"
+    Ensure-Directory $payloadModelsDir
+    Copy-Item $llmPath (Join-Path $payloadModelsDir $llmModelFileName) -Force
+}
+
 Copy-Item $ModelManifestPath (Join-Path $OutputDir "model-manifest.json") -Force
+if (Test-Path $ModelCertificationReportPath -PathType Leaf) {
+    Copy-Item $ModelCertificationReportPath (Join-Path $OutputDir "model-certification-report.json") -Force
+}
 Copy-Item $BuildProvenancePath (Join-Path $OutputDir "build-provenance.json") -Force
 Copy-Item $PrerequisiteReportPath (Join-Path $OutputDir "prerequisite-validation.json") -Force
+Copy-Item $NativeBackendReportPath (Join-Path $OutputDir "native-backend-validation.json") -Force
 Copy-Item $SigningReportPath (Join-Path $OutputDir "signing-report.json") -Force
+Copy-Item $officialBundle $setupExe -Force
+
+$setupSignature = Get-AuthenticodeSignature $setupExe
+if ($BuildProfile -eq "Production" -and $setupSignature.Status -ne "Valid") {
+    throw "Setup.exe failed Authenticode verification after copy: $($setupSignature.Status)"
+}
+$signingResults += [pscustomobject]@{
+    path = $setupExe
+    status = if ($BuildProfile -eq "NonProduction" -and $setupSignature.Status -ne "Valid") { "unsigned-nonproduction" } else { $setupSignature.Status.ToString() }
+    signer = if ($null -eq $setupSignature.SignerCertificate) { "" } else { $setupSignature.SignerCertificate.Subject }
+    thumbprint = if ($null -eq $setupSignature.SignerCertificate) { "" } else { $setupSignature.SignerCertificate.Thumbprint }
+    timestampUrl = if ($setupSignature.Status -eq "Valid") { $TimestampUrl } else { "" }
+}
+$signingResults | ConvertTo-Json -Depth 8 | Set-Content -Path $SigningReportPath -Encoding UTF8
+Copy-Item $SigningReportPath (Join-Path $OutputDir "signing-report.json") -Force
+Write-BuildProvenance -ModelProvenanceEntries $provenanceEntries
+Copy-Item $BuildProvenancePath (Join-Path $OutputDir "build-provenance.json") -Force
 
 Write-Host ""
 Write-Host "===============================================" -ForegroundColor Green
 Write-Host "  Installer build completed" -ForegroundColor Green
 Write-Host "  MSI    : $officialMsi" -ForegroundColor Green
 Write-Host "  Bundle : $officialBundle" -ForegroundColor Green
+Write-Host "  Setup  : $setupExe" -ForegroundColor Green
+if ($externalLlmPayload) {
+    Write-Host "  Payload: $ExternalPayloadDir" -ForegroundColor Green
+}
 Write-Host "  Mode   : $mode" -ForegroundColor Green
 Write-Host "  Profile: $BuildProfile" -ForegroundColor Green
 Write-Host "===============================================" -ForegroundColor Green

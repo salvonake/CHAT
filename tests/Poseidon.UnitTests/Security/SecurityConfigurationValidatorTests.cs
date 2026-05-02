@@ -140,6 +140,105 @@ public sealed class SecurityConfigurationValidatorTests
     }
 
     [Fact]
+    public void ValidateMediatRLicense_MissingProductionSecretRef_Rejects()
+    {
+        var config = BuildConfig(new Dictionary<string, string?>
+        {
+            ["DOTNET_ENVIRONMENT"] = "Production"
+        });
+
+        var act = () => SecurityConfigurationValidator.ValidateMediatRLicense(config);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*MediatR:LicenseKeySecretRef*");
+    }
+
+    [Fact]
+    public void ValidateMediatRLicense_UnresolvedProductionSecretRef_Rejects()
+    {
+        var config = BuildConfig(new Dictionary<string, string?>
+        {
+            ["DOTNET_ENVIRONMENT"] = "Production",
+            ["MediatR:LicenseKeySecretRef"] = ProtectedSecretStore.CreateReference(
+                $"Poseidon/Test/MediatR/Missing/{Guid.NewGuid():N}",
+                "v-test",
+                ProtectedSecretScope.CurrentUser)
+        });
+
+        var act = () => SecurityConfigurationValidator.ValidateMediatRLicense(config);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*could not be resolved*");
+    }
+
+    [Fact]
+    public void ValidateMediatRLicense_ProtectedProductionSecret_Accepts()
+    {
+        var config = BuildConfig(new Dictionary<string, string?>
+        {
+            ["DOTNET_ENVIRONMENT"] = "Production",
+            ["MediatR:LicenseKeySecretRef"] = CreateProtectedSecret("Poseidon/Test/MediatR", "mediatr-production-license-2026")
+        });
+
+        var act = () => SecurityConfigurationValidator.ValidateMediatRLicense(config);
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void ValidateMediatRLicense_DevelopmentExplicitInsecurePlaintext_Accepts()
+    {
+        var config = BuildConfig(new Dictionary<string, string?>
+        {
+            ["DOTNET_ENVIRONMENT"] = "Development",
+            ["Security:AllowInsecureDevelopmentSecrets"] = "true",
+            ["MediatR:LicenseKey"] = "dev-mediatr-license"
+        });
+
+        var act = () => SecurityConfigurationValidator.ValidateMediatRLicense(config);
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
+    public void ValidateProvisioning_MissingProductionMediatRSecretRef_Rejects()
+    {
+        var data = FullLocalRuntimeConfig(new Dictionary<string, string?>
+        {
+            ["MediatR:LicenseKeySecretRef"] = ""
+        });
+        var config = BuildConfig(data);
+
+        var act = () => SecurityConfigurationValidator.ValidateProvisioning(
+            config,
+            "full",
+            allowDeferredSecrets: true);
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*MediatR:LicenseKeySecretRef*");
+    }
+
+    [Fact]
+    public void ValidateProvisioning_DeferredProductionMediatRSecretRef_Accepts()
+    {
+        var data = FullLocalRuntimeConfig(new Dictionary<string, string?>
+        {
+            ["MediatR:LicenseKeySecretRef"] = ProtectedSecretStore.CreateReference(
+                $"Poseidon/Test/MediatR/Deferred/{Guid.NewGuid():N}",
+                "v-test",
+                ProtectedSecretScope.CurrentUser)
+        });
+        var config = BuildConfig(data);
+
+        var act = () => SecurityConfigurationValidator.ValidateProvisioning(
+            config,
+            "full",
+            allowDeferredSecrets: true);
+
+        act.Should().NotThrow();
+    }
+
+    [Fact]
     public void ValidateRuntimeConfiguration_ProductionLocalProviderMissingHashes_Rejects()
     {
         var config = BuildConfig(FullLocalRuntimeConfig(new Dictionary<string, string?>
@@ -223,6 +322,7 @@ public sealed class SecurityConfigurationValidatorTests
     private static Dictionary<string, string?> FullLocalRuntimeConfig(Dictionary<string, string?> overrides)
     {
         var encryptionRef = CreateProtectedSecret("Poseidon/Test/Encryption", "P0seidon!Production.Encryption.Passphrase.2026.$");
+        var mediatRLicenseRef = CreateProtectedSecret("Poseidon/Test/MediatR", "mediatr-production-license-2026");
         var data = new Dictionary<string, string?>
         {
             ["DOTNET_ENVIRONMENT"] = "Production",
@@ -233,6 +333,7 @@ public sealed class SecurityConfigurationValidatorTests
             ["Retrieval:StrictMode"] = "true",
             ["Security:EncryptionEnabled"] = "true",
             ["Security:EncryptionPassphraseRef"] = encryptionRef,
+            ["MediatR:LicenseKeySecretRef"] = mediatRLicenseRef,
             ["ModelIntegrity:ExpectedLlmHash"] = Sha256('a'),
             ["ModelIntegrity:ExpectedEmbeddingHash"] = Sha256('b')
         };

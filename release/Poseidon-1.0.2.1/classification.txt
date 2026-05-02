@@ -1,0 +1,10 @@
+﻿Final Classification: FORMAT DRIFT AGAINST LLamaSharp 0.19.0
+
+Evidence:
+- Original Qwen GGUF fails with LoadWeightsFailedException on the corrected LLamaSharp/native-backend runtime baseline.
+- TinyLlama GGUF loads successfully on the same runtime/backend after preserving the installer filename contract.
+- Native backend verified through installed cpu-avx2 backend files.
+- Deployment drift eliminated through versioned Burn installs and publish-to-installed hash parity.
+
+Conclusion:
+Original Qwen GGUF is incompatible with the bundled llama.cpp/LLamaSharp 0.19.0 backend or otherwise invalid for that backend. The remediation is artifact-only: replace the GGUF payload with a validated compatible model while preserving runtime/installer architecture.

@@ -9,12 +9,28 @@
     <InstallerPlatform>x64</InstallerPlatform>
     <EnableDefaultItems>false</EnableDefaultItems>
     <NuGetPackageRoot Condition="'$(NuGetPackageRoot)' == ''">$(UserProfile)\.nuget\packages\</NuGetPackageRoot>
+    <ModelsPath Condition="'$(ModelsPath)' == ''">$(MSBuildProjectDirectory)\models</ModelsPath>
+    <ProvisioningCheckPath Condition="'$(ProvisioningCheckPath)' == ''">$(MSBuildProjectDirectory)\..\publish\provisioning-check\win-x64\provisioning-check.exe</ProvisioningCheckPath>
+    <MachineConfigPath Condition="'$(MachineConfigPath)' == ''">$(MSBuildProjectDirectory)\generated\appsettings.user.json</MachineConfigPath>
+    <ModelManifestPath Condition="'$(ModelManifestPath)' == ''">$(MSBuildProjectDirectory)\generated\model-manifest.json</ModelManifestPath>
+    <InstallerMode Condition="'$(InstallerMode)' == ''">full</InstallerMode>
+    <ExternalLlmPayload Condition="'$(ExternalLlmPayload)' == ''">false</ExternalLlmPayload>
+    <ModelPayloadInstallerPath Condition="'$(ModelPayloadInstallerPath)' == ''">$(MSBuildProjectDirectory)\generated\ModelPayloadInstaller\win-x64\ModelPayloadInstaller.exe</ModelPayloadInstallerPath>
+    <LlmModelFileName Condition="'$(LlmModelFileName)' == ''">qwen2.5-14b.Q5_K_M.gguf</LlmModelFileName>
+    <LlmModelSha256 Condition="'$(LlmModelSha256)' == ''">0000000000000000000000000000000000000000000000000000000000000000</LlmModelSha256>
+    <MsiSourcePath Condition="'$(MsiSourcePath)' == ''">$(MSBuildProjectDirectory)\output\Poseidon.Installer.msi</MsiSourcePath>
 
     <DefineConstants>
       ProductName=Ù†Ø¸Ø§Ù… Ø§Ù„Ø°ÙƒØ§Ø¡ Ø§Ù„Ù‚Ø§Ù†ÙˆÙ†ÙŠ;
       ProductNameEn=Poseidon Desktop;
       Manufacturer=Poseidon;
-      BundleUpgradeCode=8B4C2F0A-5D3E-49B7-A6F1-2E7F9B3D4F0C
+      BundleUpgradeCode=8B4C2F0A-5D3E-49B7-A6F1-2E7F9B3D4F0C;
+      InstallerMode=$(InstallerMode);
+      ExternalLlmPayload=$(ExternalLlmPayload);
+      ModelPayloadInstallerPath=$(ModelPayloadInstallerPath);
+      LlmModelFileName=$(LlmModelFileName);
+      LlmModelSha256=$(LlmModelSha256);
+      MsiSourcePath=$(MsiSourcePath)
     </DefineConstants>
   </PropertyGroup>
 
@@ -31,11 +47,6 @@
   <ItemGroup>
     <WixExtension Include="$(NuGetPackageRoot)\wixtoolset.bal.wixext\5.0.0\wixext5\WixToolset.BootstrapperApplications.wixext.dll" />
     <WixExtension Include="$(NuGetPackageRoot)\wixtoolset.util.wixext\5.0.0\wixext5\WixToolset.Util.wixext.dll" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <!-- Reference the MSI Package project -->
-    <ProjectReference Include="Poseidon.Installer.wixproj"/>
   </ItemGroup>
 
 </Project>

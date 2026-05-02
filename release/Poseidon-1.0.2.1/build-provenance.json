@@ -1,0 +1,73 @@
+﻿{
+    "schemaVersion":  1,
+    "generatedAtUtc":  "2026-04-30T15:20:33.2403534Z",
+    "buildProfile":  "NonProduction",
+    "configuration":  "Release",
+    "mode":  "full",
+    "gitCommit":  "e07ac1c3c9f470498220c61a9228443c2ce9e595",
+    "models":  [
+                   {
+                       "filename":  "Qwen_Qwen3.5-9B-Q5_K_M.gguf",
+                       "type":  "llm",
+                       "sourcePath":  "C:\\LegalAI\\installer\\models\\Qwen_Qwen3.5-9B-Q5_K_M.gguf",
+                       "sourceSha256":  "da3087fb14aede55fde6eb81a0e55e886810e43509ec82ecdc7aa5d62a03b556",
+                       "sourceSizeBytes":  637699456
+                   },
+                   {
+                       "filename":  "arabert.onnx",
+                       "type":  "embedding",
+                       "sourcePath":  "C:\\LegalAI\\installer\\models\\arabert.onnx",
+                       "sourceSha256":  "342495c4ae30026f8162da811dfbc7cc1a009175b8fe29572385e515eb323680",
+                       "sourceSizeBytes":  538762298
+                   }
+               ],
+    "prerequisites":  [
+                          {
+                              "name":  "Microsoft Visual C++ Redistributable 2015-2022 x64",
+                              "fileName":  "vc_redist.x64.exe",
+                              "url":  "https://download.visualstudio.microsoft.com/download/pr/7ebf5fdb-36dc-4145-b0a0-90d3d5990a61/CC0FF0EB1DC3F5188AE6300FAEF32BF5BEEBA4BDD6E8E445A9184072096B713B/VC_redist.x64.exe",
+                              "sha256":  "cc0ff0eb1dc3f5188ae6300faef32bf5beeba4bdd6e8e445a9184072096b713b",
+                              "verified":  true
+                          },
+                          {
+                              "name":  ".NET 8 Desktop Runtime x64",
+                              "fileName":  "windowsdesktop-runtime-8.0-win-x64.exe",
+                              "url":  "https://builds.dotnet.microsoft.com/dotnet/WindowsDesktop/8.0.26/windowsdesktop-runtime-8.0.26-win-x64.exe",
+                              "sha256":  "1c20cd6d8f04adbceddacb69ef8799aafe5d6c7e898ab5434d5fd57d53b674d5",
+                              "verified":  true
+                          }
+                      ],
+    "signing":  [
+                    {
+                        "path":  "C:\\LegalAI\\publish\\provisioning-check\\win-x64\\provisioning-check.exe",
+                        "status":  "unsigned-nonproduction",
+                        "signer":  "",
+                        "timestampUrl":  ""
+                    },
+                    {
+                        "path":  "C:\\LegalAI\\installer\\output\\Poseidon.Installer.msi",
+                        "status":  "unsigned-nonproduction",
+                        "signer":  "",
+                        "timestampUrl":  ""
+                    },
+                    {
+                        "path":  "C:\\LegalAI\\installer\\output\\Poseidon.Bundle.exe",
+                        "status":  "unsigned-nonproduction",
+                        "signer":  "",
+                        "timestampUrl":  ""
+                    },
+                    {
+                        "path":  "C:\\LegalAI\\installer\\output\\Setup.exe",
+                        "status":  "unsigned-nonproduction",
+                        "signer":  "",
+                        "thumbprint":  "",
+                        "timestampUrl":  ""
+                    }
+                ],
+    "secretStorage":  {
+                          "provider":  "dpapi",
+                          "scope":  "LocalMachine",
+                          "keyVersion":  "v1",
+                          "productionPlaintextSecrets":  false
+                      }
+}

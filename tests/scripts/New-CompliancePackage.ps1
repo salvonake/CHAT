@@ -83,9 +83,11 @@ try {
     $expectedArtifacts = @(
         "Poseidon.Installer.msi",
         "Poseidon.Bundle.exe",
+        "Setup.exe",
         "model-manifest.json",
         "build-provenance.json",
         "prerequisite-validation.json",
+        "native-backend-validation.json",
         "signing-report.json"
     )
 
@@ -107,6 +109,7 @@ try {
     }
 
     $modelManifestPath = Join-Path $installerOutputPath "model-manifest.json"
+    $payloadModelsPath = Join-Path $installerOutputPath "payload\Models"
     $modelCertification = [ordered]@{
         present = Test-Path $modelManifestPath -PathType Leaf
         schemaVersion = $null
@@ -114,14 +117,104 @@ try {
         hashesPresent = $false
         sourcePathLeakage = $false
     }
+    $externalPayloadCertification = [ordered]@{
+        expected = $false
+        payloadDirectory = $payloadModelsPath
+        directoryPresent = Test-Path $payloadModelsPath -PathType Container
+        manifestPayloadCount = 0
+        payloadFileCount = 0
+        allManifestPayloadsPresent = $true
+        allPayloadHashesMatch = $true
+        pathTraversalDetected = $false
+        files = @()
+    }
     if ($modelCertification.present) {
         $modelManifest = Get-Content -Raw $modelManifestPath | ConvertFrom-Json
+        $manifestModels = @($modelManifest.models)
         $modelCertification.schemaVersion = $modelManifest.schemaVersion
-        $modelCertification.modelCount = @($modelManifest.models).Count
-        $modelCertification.hashesPresent = -not (@($modelManifest.models | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.sha256) -or $_.sha256 -notmatch '^[a-f0-9]{64}$' }).Count -gt 0)
-        $modelCertification.sourcePathLeakage = @($modelManifest.models | Where-Object { $_.PSObject.Properties["sourcePath"] }).Count -gt 0
+        $modelCertification.modelCount = $manifestModels.Count
+        $modelCertification.hashesPresent = -not (@($manifestModels | Where-Object { [string]::IsNullOrWhiteSpace([string]$_.sha256) -or $_.sha256 -notmatch '^[a-f0-9]{64}$' }).Count -gt 0)
+        $modelCertification.sourcePathLeakage = @($manifestModels | Where-Object { $_.PSObject.Properties["sourcePath"] }).Count -gt 0
         if (-not $modelCertification.hashesPresent) { Add-Blocker "Model manifest contains missing or invalid hashes." }
         if ($modelCertification.sourcePathLeakage) { Add-Blocker "Model manifest leaks source paths." }
+
+        $externalManifestModels = @($manifestModels | Where-Object { $_.type -eq "llm" -and [int64]$_.sizeBytes -ge 2147483648 })
+        $payloadFiles = @()
+        if ($externalPayloadCertification.directoryPresent) {
+            $payloadFiles = @(Get-ChildItem -Path $payloadModelsPath -File)
+        }
+
+        $externalPayloadCertification.expected = ($externalManifestModels.Count -gt 0 -or $payloadFiles.Count -gt 0)
+        $externalPayloadCertification.manifestPayloadCount = $externalManifestModels.Count
+        $externalPayloadCertification.payloadFileCount = $payloadFiles.Count
+
+        if ($externalPayloadCertification.expected -and -not $externalPayloadCertification.directoryPresent) {
+            $externalPayloadCertification.allManifestPayloadsPresent = $false
+            Add-Blocker "External model payload directory is missing beside Setup.exe."
+        }
+
+        foreach ($model in $externalManifestModels) {
+            $fileName = [string]$model.filename
+            $hasTraversal = [string]::IsNullOrWhiteSpace($fileName) -or
+                [System.IO.Path]::IsPathRooted($fileName) -or
+                $fileName.Contains("..") -or
+                $fileName.Contains("\") -or
+                $fileName.Contains("/") -or
+                ([System.IO.Path]::GetFileName($fileName) -ne $fileName)
+
+            if ($hasTraversal) {
+                $externalPayloadCertification.pathTraversalDetected = $true
+                Add-Blocker "External payload manifest filename is not a safe leaf name: $fileName"
+                continue
+            }
+
+            $payloadPath = Join-Path $payloadModelsPath $fileName
+            $payloadPresent = Test-Path $payloadPath -PathType Leaf
+            $payloadHash = ""
+            $payloadSize = 0L
+            $hashMatches = $false
+            $sizeMatches = $false
+
+            if ($payloadPresent) {
+                $payloadItem = Get-Item $payloadPath
+                $payloadSize = $payloadItem.Length
+                $payloadHash = (Get-FileHash $payloadPath -Algorithm SHA256).Hash.ToLowerInvariant()
+                $hashMatches = ($payloadHash -eq ([string]$model.sha256).ToLowerInvariant())
+                $sizeMatches = ($payloadSize -eq [int64]$model.sizeBytes)
+
+                $artifactChecksums += [pscustomobject]@{
+                    name = "payload/Models/$fileName"
+                    path = $payloadPath
+                    sizeBytes = $payloadSize
+                    sha256 = $payloadHash
+                }
+            }
+
+            if (-not $payloadPresent) {
+                $externalPayloadCertification.allManifestPayloadsPresent = $false
+                Add-Blocker "External model payload missing: payload/Models/$fileName"
+            }
+            elseif (-not $hashMatches) {
+                $externalPayloadCertification.allPayloadHashesMatch = $false
+                Add-Blocker "External model payload hash mismatch: payload/Models/$fileName"
+            }
+            elseif (-not $sizeMatches) {
+                $externalPayloadCertification.allPayloadHashesMatch = $false
+                Add-Blocker "External model payload size mismatch: payload/Models/$fileName"
+            }
+
+            $externalPayloadCertification.files += [pscustomobject]@{
+                name = $fileName
+                path = $payloadPath
+                present = $payloadPresent
+                sizeBytes = $payloadSize
+                manifestSizeBytes = [int64]$model.sizeBytes
+                sha256 = $payloadHash
+                manifestSha256 = ([string]$model.sha256).ToLowerInvariant()
+                hashMatches = $hashMatches
+                sizeMatches = $sizeMatches
+            }
+        }
     }
 
     $prerequisitePath = Join-Path $installerOutputPath "prerequisite-validation.json"
@@ -135,6 +228,21 @@ try {
         $prerequisiteCertification.verifiedCount = @($prereqs | Where-Object { $_.verified -eq $true }).Count
         $prerequisiteCertification.allVerified = ($prereqs.Count -gt 0 -and $prerequisiteCertification.verifiedCount -eq $prereqs.Count)
         if (-not $prerequisiteCertification.allVerified) { Add-Blocker "Prerequisite validation report is incomplete." }
+    }
+
+    $nativeBackendPath = Join-Path $installerOutputPath "native-backend-validation.json"
+    $nativeBackendCertification = [ordered]@{
+        present = Test-Path $nativeBackendPath -PathType Leaf
+        requiredCount = 0
+        presentRequiredCount = 0
+        allRequiredPresent = $false
+    }
+    if ($nativeBackendCertification.present) {
+        $nativeBackends = @((Get-Content -Raw $nativeBackendPath | ConvertFrom-Json) | ForEach-Object { $_ })
+        $nativeBackendCertification.requiredCount = @($nativeBackends | Where-Object { $_.required -eq $true }).Count
+        $nativeBackendCertification.presentRequiredCount = @($nativeBackends | Where-Object { $_.required -eq $true -and $_.present -eq $true -and $_.sizeBytes -gt 0 }).Count
+        $nativeBackendCertification.allRequiredPresent = ($nativeBackendCertification.requiredCount -gt 0 -and $nativeBackendCertification.requiredCount -eq $nativeBackendCertification.presentRequiredCount)
+        if (-not $nativeBackendCertification.allRequiredPresent) { Add-Blocker "Native LLamaSharp backend validation report is incomplete." }
     }
 
     $signingPath = Join-Path $installerOutputPath "signing-report.json"
@@ -174,7 +282,9 @@ try {
             vulnerablePackagesReported = $hasVulnerabilities
         }
         modelManifest = $modelCertification
+        externalPayload = $externalPayloadCertification
         prerequisites = $prerequisiteCertification
+        nativeBackends = $nativeBackendCertification
         signing = $signingCertification
         artifactChecksums = @($artifactChecksums)
         blockers = @($blockers)

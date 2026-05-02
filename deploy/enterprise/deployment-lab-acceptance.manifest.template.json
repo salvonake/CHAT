@@ -1,0 +1,159 @@
+{
+  "manifest_version": "1.0",
+  "lab_id": "",
+  "environment": {
+    "name": "",
+    "type": "deployment_lab",
+    "environment_hash": "",
+    "is_isolated": true,
+    "os": {
+      "caption": "",
+      "version": "",
+      "build_number": ""
+    },
+    "deployment_context": {
+      "channel": "",
+      "account_context": "",
+      "machine_scope": "perMachine",
+      "multi_user_validated": false
+    }
+  },
+  "build_identity": {
+    "product": "Poseidon",
+    "version": "",
+    "build_id": "",
+    "commit_hash": "",
+    "provenance_binding_hash": "",
+    "artifact_hash": "",
+    "signature_chain_id": "",
+    "build_timestamp_utc": ""
+  },
+  "certification_binding": {
+    "checklist_version": "1",
+    "checklist_path": "docs/release/Certification-Gate-Checklist.md",
+    "checklist_hash": "",
+    "gate_manifest_path": "deploy/enterprise/certification-gate-checklist.template.json",
+    "gate_manifest_hash": "",
+    "gate_results": [
+      {
+        "gate_id": "",
+        "status": "BLOCKED",
+        "evidence_refs": [],
+        "validation_timestamp_utc": "",
+        "validator": ""
+      }
+    ]
+  },
+  "trust_chain_validation": {
+    "artifact_signature_valid": false,
+    "timestamp_authority_valid": false,
+    "hash_chain_valid": false,
+    "installer_validation_passed": false,
+    "provisioning_validation_passed": false,
+    "tamper_detection_passed": false,
+    "signature_evidence_refs": [],
+    "hash_evidence_refs": []
+  },
+  "runtime_enforcement_proofs": {
+    "fail_closed_verified": false,
+    "unsigned_artifact_rejected": false,
+    "uncertified_model_blocked": false,
+    "tokenizer_substitution_blocked": false,
+    "plaintext_secret_detection_blocked": false,
+    "manifest_report_mismatch_blocked": false,
+    "native_backend_absence_blocked": false,
+    "evidence_refs": []
+  },
+  "deployment_lifecycle": {
+    "interactive_install": {
+      "status": "BLOCKED",
+      "exit_code": null,
+      "evidence_refs": []
+    },
+    "silent_burn_install": {
+      "status": "BLOCKED",
+      "exit_code": null,
+      "evidence_refs": []
+    },
+    "silent_msi_install": {
+      "status": "BLOCKED",
+      "exit_code": null,
+      "evidence_refs": []
+    },
+    "repair": {
+      "status": "BLOCKED",
+      "exit_code": null,
+      "evidence_refs": []
+    },
+    "upgrade": {
+      "status": "BLOCKED",
+      "from_version": "",
+      "to_version": "",
+      "exit_code": null,
+      "evidence_refs": []
+    },
+    "rollback": {
+      "status": "BLOCKED",
+      "exit_code": null,
+      "evidence_refs": []
+    },
+    "uninstall": {
+      "status": "BLOCKED",
+      "exit_code": null,
+      "evidence_refs": []
+    },
+    "sccm": {
+      "status": "BLOCKED",
+      "evidence_refs": []
+    },
+    "intune": {
+      "status": "BLOCKED",
+      "evidence_refs": []
+    },
+    "gpo": {
+      "status": "BLOCKED",
+      "evidence_refs": []
+    },
+    "system_context": {
+      "status": "BLOCKED",
+      "evidence_refs": []
+    },
+    "multi_user": {
+      "status": "BLOCKED",
+      "evidence_refs": []
+    }
+  },
+  "runtime_verification": {
+    "startup_mode": "",
+    "can_ask": false,
+    "errors": null,
+    "warnings": null,
+    "positive_signals": [],
+    "forbidden_signals_absent": [
+      "FailClosedGuard ambiguity",
+      "native library cannot be correctly loaded",
+      "LoadWeightsFailedException",
+      "LuckyPennySoftware.MediatR.License",
+      "manifest integrity failure",
+      "provisioning failure"
+    ],
+    "evidence_refs": []
+  },
+  "evidence_bundle": {
+    "root_path": "",
+    "bundle_sha256": "",
+    "logs": [],
+    "hashes": [],
+    "signatures": [],
+    "trace_ids": [],
+    "generated_at_utc": ""
+  },
+  "attestation": {
+    "status": "BLOCKED",
+    "reviewer": "",
+    "reviewer_role": "",
+    "review_timestamp_utc": "",
+    "release_authority_id": "",
+    "notes": ""
+  }
+}

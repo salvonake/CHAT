@@ -146,6 +146,9 @@
       "poseidon.domain": {
         "type": "Project"
       },
+      "poseidon.modelcertification": {
+        "type": "Project"
+      },
       "poseidon.security": {
         "type": "Project",
         "dependencies": {

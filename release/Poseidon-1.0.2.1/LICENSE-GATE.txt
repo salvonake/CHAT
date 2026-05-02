@@ -1,0 +1,26 @@
+﻿License Gate Result: BLOCKED
+Version: 1.0.2.1
+TimestampUtc: 2026-05-02T10:57:10.2648479Z
+
+Runtime Evidence:
+- Latest logs show LLamaSharp model load succeeds.
+- Runtime enters valid Degraded mode with CanAsk=true and Errors=0.
+- LuckyPenny/MediatR license warning is present in current runtime logs.
+
+Classification:
+- Governance / commercial licensing blocker.
+- Not a runtime, installer logic, model, provisioning, or native backend defect.
+
+Implemented Control:
+- Production Desktop/API/Worker configuration now requires MediatR:LicenseKeySecretRef.
+- Plaintext MediatR:LicenseKey is allowed only in explicit insecure Development mode.
+- Production machine config generation emits MediatR:LicenseKeySecretRef and never emits plaintext MediatR:LicenseKey.
+
+Required Remediation:
+- Procure/approve a commercial MediatR license.
+- Store it as a protected DPAPI secret referenced by MediatR:LicenseKeySecretRef.
+- Re-run production runtime validation and confirm no LuckyPennySoftware.MediatR.License warning appears.
+
+Status Impact:
+- Existing release bundle remains NONPRODUCTION CERTIFICATION PACKAGE.
+- Production release remains blocked until signing and MediatR license evidence both pass.

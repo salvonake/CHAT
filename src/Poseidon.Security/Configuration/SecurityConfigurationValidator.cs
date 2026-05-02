@@ -107,6 +107,7 @@ public static class SecurityConfigurationValidator
         ValidateLocalModelHashes(config, context);
         ValidateStrictMode(config);
         ValidateProvisioningSecretContract(config, context, allowDeferredSecrets);
+        ValidateProvisioningMediatRLicenseContract(config, context, allowDeferredSecrets);
     }
 
     public static void ValidateJwt(IConfiguration config, SecurityValidationContext? context = null)
@@ -184,6 +185,9 @@ public static class SecurityConfigurationValidator
         SecurityValidationContext context,
         PoseidonRuntimeComponent component)
     {
+        if (component is PoseidonRuntimeComponent.Desktop or PoseidonRuntimeComponent.Api or PoseidonRuntimeComponent.Worker)
+            ValidateMediatRLicense(config, context);
+
         if (component is not PoseidonRuntimeComponent.ManagementApi)
         {
             ValidateProviderConfiguration(config);
@@ -191,6 +195,45 @@ public static class SecurityConfigurationValidator
             ValidateLocalModelHashes(config, context);
             ValidateEncryptionPolicy(config, context, component);
         }
+    }
+
+    public static void ValidateMediatRLicense(IConfiguration config, SecurityValidationContext? context = null)
+    {
+        ResolveMediatRLicenseKey(config, context);
+    }
+
+    public static string? ResolveMediatRLicenseKey(IConfiguration config, SecurityValidationContext? context = null)
+    {
+        context ??= SecurityValidationContext.FromConfiguration(config);
+
+        const string plaintextKey = "MediatR:LicenseKey";
+        const string referenceKey = "MediatR:LicenseKeySecretRef";
+
+        var reference = config[referenceKey];
+        if (!string.IsNullOrWhiteSpace(reference))
+        {
+            var loaded = ProtectedSecretStore.Load(reference);
+            if (!loaded.Succeeded)
+                throw new InvalidOperationException($"{referenceKey} could not be resolved: {loaded.Status}.");
+
+            ValidateMediatRLicenseValue(loaded.Value, referenceKey, context);
+            return loaded.Value;
+        }
+
+        var plaintext = config[plaintextKey];
+        if (!string.IsNullOrWhiteSpace(plaintext))
+        {
+            if (!context.AllowsInsecureDevelopment)
+                throw new InvalidOperationException($"{plaintextKey} cannot contain plaintext license material outside explicit insecure Development mode. Use {referenceKey}.");
+
+            ValidateMediatRLicenseValue(plaintext, plaintextKey, context);
+            return plaintext;
+        }
+
+        if (context.IsProductionLike)
+            throw new InvalidOperationException($"{referenceKey} is required outside explicit insecure Development mode.");
+
+        return null;
     }
 
     public static void ValidateProviderConfiguration(IConfiguration config)
@@ -308,6 +351,40 @@ public static class SecurityConfigurationValidator
         ValidateSharedKey(plaintext, "Security:EncryptionPassphrase", context, 32);
     }
 
+    private static void ValidateProvisioningMediatRLicenseContract(
+        IConfiguration config,
+        SecurityValidationContext context,
+        bool allowDeferredSecrets)
+    {
+        const string plaintextKey = "MediatR:LicenseKey";
+        const string referenceKey = "MediatR:LicenseKeySecretRef";
+
+        var reference = config[referenceKey];
+        if (!string.IsNullOrWhiteSpace(reference))
+        {
+            if (!ProtectedSecretReference.TryParse(reference, out _))
+                throw new InvalidOperationException($"{referenceKey} is invalid.");
+
+            if (!allowDeferredSecrets)
+                ValidateMediatRLicense(config, context);
+
+            return;
+        }
+
+        var plaintext = config[plaintextKey];
+        if (!string.IsNullOrWhiteSpace(plaintext))
+        {
+            if (!context.AllowsInsecureDevelopment)
+                throw new InvalidOperationException($"{plaintextKey} cannot contain plaintext license material outside explicit insecure Development mode. Use {referenceKey}.");
+
+            ValidateMediatRLicenseValue(plaintext, plaintextKey, context);
+            return;
+        }
+
+        if (context.IsProductionLike)
+            throw new InvalidOperationException($"{referenceKey} is required for production provisioning.");
+    }
+
     private static void ValidateProtectedOrDevelopmentSecret(
         IConfiguration config,
         SecurityValidationContext context,
@@ -324,6 +401,22 @@ public static class SecurityConfigurationValidator
         string referenceKey)
     {
         ConfigurationSecretResolver.ResolveOptionalSecret(config, context, plaintextKey, referenceKey, 32);
+    }
+
+    private static void ValidateMediatRLicenseValue(
+        string? value,
+        string settingName,
+        SecurityValidationContext context)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            throw new InvalidOperationException($"{settingName} is required outside explicit insecure Development mode.");
+
+        if (context.AllowsInsecureDevelopment)
+            return;
+
+        var normalized = NormalizeForPlaceholderCheck(value);
+        if (PlaceholderFragments.Any(normalized.Contains))
+            throw new InvalidOperationException($"{settingName} contains a placeholder or development value.");
     }
 
     private static void RequireNonPlaceholderValue(

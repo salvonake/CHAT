@@ -16,6 +16,16 @@
     { "id": "existing-user-migration", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
     { "id": "existing-config-preservation", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
     { "id": "external-model-mode", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "sccm-external-payload-delivery", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "intune-payload-staging", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "gpo-network-payload-access", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "system-context-payload-resolution", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "offline-external-payload-install", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "partial-payload-failure", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "rollback-after-payload-copy-failure", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "upgrade-existing-payload", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "repair-missing-payload", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
+    { "id": "multi-user-external-payload", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
     { "id": "full-local-mode", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" },
     { "id": "degraded-mode", "status": "pending", "installResult": "", "provisioningResult": "", "startupMode": "", "repairResult": "", "rollbackResult": "", "uninstallPolicy": "", "logArtifact": "" }
   ]

@@ -39,6 +39,7 @@ services.AddEndpointsApiExplorer();
 SecurityConfigurationValidator.ValidateApi(configuration, builder.Environment.EnvironmentName);
 var securityContext = SecurityValidationContext.FromConfiguration(configuration, builder.Environment.EnvironmentName);
 var jwtSigningKeys = JwtSigningKeyResolver.Resolve(configuration, securityContext);
+var mediatRLicenseKey = SecurityConfigurationValidator.ResolveMediatRLicenseKey(configuration, securityContext);
 
 services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 	.AddJwtBearer(options =>
@@ -71,7 +72,11 @@ services.AddSingleton<IJwtTokenService, JwtTokenService>();
 services.AddSingleton<ApiTextLocalizer>();
 
 services.AddMediatR(cfg =>
-	cfg.RegisterServicesFromAssemblyContaining<AssemblyMarker>());
+{
+	cfg.RegisterServicesFromAssemblyContaining<AssemblyMarker>();
+	if (!string.IsNullOrWhiteSpace(mediatRLicenseKey))
+		cfg.LicenseKey = mediatRLicenseKey;
+});
 
 ConfigureCoreServices(services, configuration, instance, includeRetrieval: true);
 services.AddHostedService<ApiStartupInitializationService>();

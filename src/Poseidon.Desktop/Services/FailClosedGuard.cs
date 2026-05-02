@@ -3,6 +3,7 @@ using Poseidon.Domain.Interfaces;
 using Poseidon.Domain.ValueObjects;
 using System.IO;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -22,6 +23,7 @@ public sealed class FailClosedGuard : IDisposable
     private readonly List<string> _blockReasons = [];
     private readonly List<string> _warnings = [];
 
+    [ActivatorUtilitiesConstructor]
     public FailClosedGuard(
         SystemHealthService healthService,
         ILogger<FailClosedGuard> logger)
@@ -35,7 +37,7 @@ public sealed class FailClosedGuard : IDisposable
         _healthCheckTimer.AutoReset = true;
     }
 
-    public FailClosedGuard(
+    internal FailClosedGuard(
         ILlmService llm,
         IVectorStore vectorStore,
         ModelIntegrityService modelIntegrity,

@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.Extensions.Configuration;
+using Poseidon.ModelCertification;
 using Poseidon.Security.Configuration;
 using Poseidon.Security.Secrets;
 
@@ -11,6 +12,9 @@ var installDir = ResolveInstallDir(options);
 try
 {
     Log(logPath, "provisioning-check started");
+
+    if (options.TryGetValue("certify-model", out var modelPath))
+        return RunModelCertification(options, modelPath, logPath);
 
     if (options.TryGetValue("set-secret", out var secretReference))
     {
@@ -43,8 +47,9 @@ try
         allowDeferredSecrets: allowDeferredSecrets);
 
     var validation = ValidateConfig(configPath, installDir);
+    var certificationReportPath = options.TryGetValue("certification-report", out var reportPath) ? reportPath : "";
     if (!string.IsNullOrWhiteSpace(manifestPath))
-        ValidateManifest(manifestPath, validation, installDir, mode);
+        ValidateManifest(manifestPath, validation, installDir, mode, certificationReportPath);
 
     if (mode == "degraded" && validation.LlmProvider == "llamasharp" && !string.IsNullOrWhiteSpace(validation.LlmModelPath))
         throw new InvalidOperationException("Degraded mode must not declare a local LLM model.");
@@ -98,6 +103,61 @@ static string Required(IReadOnlyDictionary<string, string> options, string key)
     return value;
 }
 
+static int RunModelCertification(IReadOnlyDictionary<string, string> options, string modelPath, string logPath)
+{
+    var reportPath = Required(options, "report");
+    var buildProfile = options.TryGetValue("build-profile", out var profile) ? profile : "Production";
+    var backend = options.TryGetValue("backend", out var configuredBackend)
+        ? configuredBackend
+        : ModelCompatibilityMatrix.CertifiedBackend;
+    var tokenizerPolicy = options.TryGetValue("tokenizer-policy", out var configuredPolicy)
+        ? configuredPolicy
+        : "required";
+    var tokenizerPath = options.TryGetValue("tokenizer-path", out var configuredTokenizerPath)
+        ? configuredTokenizerPath
+        : "";
+    var allowUncertified = ReadBooleanOption(options, "allow-uncertified-model");
+    var warningAccepted = ReadBooleanOption(options, "warning-accepted");
+
+    if (buildProfile.Equals("Production", StringComparison.OrdinalIgnoreCase) &&
+        (allowUncertified || warningAccepted))
+    {
+        throw new InvalidOperationException("Production model certification does not allow uncertified or warning-accepted overrides.");
+    }
+
+    var service = new ModelCertificationService();
+    var report = service.Certify(
+        modelPath,
+        new ModelCertificationOptions(
+            backend,
+            buildProfile,
+            tokenizerPolicy,
+            tokenizerPath,
+            allowUncertified,
+            warningAccepted));
+
+    ModelCertificationService.WriteReport(report, reportPath);
+    Log(logPath, $"model certification report generated: {reportPath}");
+
+    if (!report.AcceptedForPackaging)
+    {
+        var reasons = report.FailureReasons.Count == 0
+            ? "model certification failed"
+            : string.Join("; ", report.FailureReasons);
+        throw new InvalidOperationException(reasons);
+    }
+
+    Console.WriteLine($"Model certification accepted: {report.CompatibilityStatus}");
+    return 0;
+}
+
+static bool ReadBooleanOption(IReadOnlyDictionary<string, string> options, string key)
+{
+    return options.TryGetValue(key, out var value) &&
+           bool.TryParse(value, out var parsed) &&
+           parsed;
+}
+
 static ProvisioningConfig ValidateConfig(string path, string installDir)
 {
     if (!File.Exists(path))
@@ -141,7 +201,7 @@ static ProvisioningConfig ValidateConfig(string path, string installDir)
     return config;
 }
 
-static void ValidateManifest(string path, ProvisioningConfig config, string installDir, string mode)
+static void ValidateManifest(string path, ProvisioningConfig config, string installDir, string mode, string certificationReportPath)
 {
     if (!File.Exists(path))
         throw new FileNotFoundException("Model manifest not found.", path);
@@ -152,9 +212,9 @@ static void ValidateManifest(string path, ProvisioningConfig config, string inst
 
     if (!root.TryGetProperty("schemaVersion", out var schemaVersion) ||
         schemaVersion.ValueKind != JsonValueKind.Number ||
-        schemaVersion.GetInt32() != 2)
+        schemaVersion.GetInt32() != 3)
     {
-        throw new InvalidOperationException("Model manifest schemaVersion must be 2.");
+        throw new InvalidOperationException("Model manifest schemaVersion must be 3.");
     }
 
     var manifestMode = ReadRequiredPropertyString(root, "mode").Trim().ToLowerInvariant();
@@ -164,6 +224,8 @@ static void ValidateManifest(string path, ProvisioningConfig config, string inst
     var packaging = ReadRequiredPropertyString(root, "packaging").Trim().ToLowerInvariant();
     if (packaging != "wix-burn")
         throw new InvalidOperationException($"Unsupported model manifest packaging value: {packaging}.");
+
+    var buildProfile = ReadRequiredPropertyString(root, "buildProfile").Trim();
 
     if (!root.TryGetProperty("models", out var models) || models.ValueKind != JsonValueKind.Array)
         throw new InvalidOperationException("Model manifest must contain a models array.");
@@ -229,6 +291,7 @@ static void ValidateManifest(string path, ProvisioningConfig config, string inst
                 throw new InvalidOperationException("Manifest LLM hash does not match machine config.");
 
             ValidateModelFile(targetPath, ".gguf", "Manifest LLM", sha256, requireHash: true);
+            ValidateModelCertification(model, targetPath, sha256, certificationReportPath, buildProfile);
             matchedLlm = true;
         }
 
@@ -260,6 +323,133 @@ static void ValidateManifest(string path, ProvisioningConfig config, string inst
         if (embeddingEntries != 1 || !matchedEmbedding)
             throw new InvalidOperationException("Degraded model manifest must contain exactly one matching embedding entry.");
     }
+}
+
+static void ValidateModelCertification(
+    JsonElement manifestEntry,
+    string modelPath,
+    string modelSha256,
+    string certificationReportPath,
+    string buildProfile)
+{
+    if (string.IsNullOrWhiteSpace(certificationReportPath))
+        throw new InvalidOperationException("LLM certification report path is required.");
+
+    if (!File.Exists(certificationReportPath))
+        throw new FileNotFoundException("LLM certification report not found.", certificationReportPath);
+
+    var reportHash = ComputeSha256(certificationReportPath);
+    var expectedReportHash = ReadRequiredPropertyString(manifestEntry, "certificationReportHash");
+    if (!string.Equals(reportHash, expectedReportHash, StringComparison.OrdinalIgnoreCase))
+        throw new InvalidOperationException("LLM certification report hash does not match manifest.");
+
+    using var stream = File.OpenRead(certificationReportPath);
+    using var document = JsonDocument.Parse(stream);
+    var report = document.RootElement;
+
+    if (!report.TryGetProperty("schemaVersion", out var reportSchema) ||
+        reportSchema.ValueKind != JsonValueKind.Number ||
+        reportSchema.GetInt32() != 1)
+    {
+        throw new InvalidOperationException("LLM certification report schemaVersion must be 1.");
+    }
+
+    if (!ReadRequiredPropertyString(report, "sha256").Equals(modelSha256, StringComparison.OrdinalIgnoreCase))
+        throw new InvalidOperationException("LLM certification report SHA-256 does not match manifest model hash.");
+
+    if (!ReadRequiredPropertyString(report, "fileName").Equals(Path.GetFileName(modelPath), StringComparison.OrdinalIgnoreCase))
+        throw new InvalidOperationException("LLM certification report filename does not match installed model.");
+
+    var backend = ReadRequiredPropertyString(report, "backend");
+    if (!backend.Equals(ModelCompatibilityMatrix.CertifiedBackend, StringComparison.OrdinalIgnoreCase))
+        throw new InvalidOperationException($"LLM certification backend mismatch: {backend}.");
+
+    if (!report.TryGetProperty("acceptedForPackaging", out var acceptedElement) ||
+        acceptedElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False) ||
+        !acceptedElement.GetBoolean())
+    {
+        throw new InvalidOperationException("LLM certification report is not accepted for packaging.");
+    }
+
+    if (buildProfile.Equals("Production", StringComparison.OrdinalIgnoreCase))
+    {
+        if (!report.TryGetProperty("compatible", out var compatibleElement) ||
+            compatibleElement.ValueKind is not (JsonValueKind.True or JsonValueKind.False) ||
+            !compatibleElement.GetBoolean())
+        {
+            throw new InvalidOperationException("Production LLM certification report must be compatible.");
+        }
+    }
+
+    CompareManifestAndReport(manifestEntry, report, "architecture");
+    CompareManifestAndReport(manifestEntry, report, "quantization");
+    CompareManifestAndReport(manifestEntry, report, "ggufVersion");
+    CompareManifestAndReport(manifestEntry, report, "certifiedBackend", reportProperty: "backend");
+    CompareManifestAndReport(manifestEntry, report, "certifiedAtUtc", reportProperty: "generatedAtUtc");
+    CompareManifestAndReport(manifestEntry, report, "compatibilityStatus");
+
+    if (!report.TryGetProperty("tokenizer", out var tokenizer) || tokenizer.ValueKind != JsonValueKind.Object)
+        throw new InvalidOperationException("LLM certification report tokenizer section is missing.");
+
+    CompareManifestAndReport(manifestEntry, tokenizer, "tokenizerPolicy", reportProperty: "policy");
+
+    if (!manifestEntry.TryGetProperty("warningAccepted", out var manifestWarning) ||
+        manifestWarning.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+    {
+        throw new InvalidOperationException("Manifest LLM certification warningAccepted is missing or invalid.");
+    }
+
+    if (!tokenizer.TryGetProperty("warningAccepted", out var reportWarning) ||
+        reportWarning.ValueKind is not (JsonValueKind.True or JsonValueKind.False) ||
+        manifestWarning.GetBoolean() != reportWarning.GetBoolean())
+    {
+        throw new InvalidOperationException("Manifest LLM tokenizer warningAccepted does not match certification report.");
+    }
+
+    if (buildProfile.Equals("Production", StringComparison.OrdinalIgnoreCase))
+    {
+        var tokenizerPolicy = ReadRequiredPropertyString(tokenizer, "policy");
+        if (!tokenizerPolicy.Equals("required", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Production LLM certification must use required tokenizer policy.");
+
+        if (!tokenizer.TryGetProperty("valid", out var tokenizerValid) ||
+            tokenizerValid.ValueKind is not (JsonValueKind.True or JsonValueKind.False) ||
+            !tokenizerValid.GetBoolean())
+        {
+            throw new InvalidOperationException("Production LLM certification tokenizer policy is not satisfied.");
+        }
+    }
+}
+
+static void CompareManifestAndReport(
+    JsonElement manifest,
+    JsonElement report,
+    string manifestProperty,
+    string? reportProperty = null)
+{
+    reportProperty ??= manifestProperty;
+    var manifestValue = ReadScalarAsString(manifest, manifestProperty);
+    var reportValue = ReadScalarAsString(report, reportProperty);
+    if (!string.Equals(manifestValue, reportValue, StringComparison.OrdinalIgnoreCase))
+    {
+        throw new InvalidOperationException(
+            $"Manifest LLM certification field '{manifestProperty}' does not match report field '{reportProperty}'.");
+    }
+}
+
+static string ReadScalarAsString(JsonElement element, string property)
+{
+    if (!element.TryGetProperty(property, out var value))
+        throw new InvalidOperationException($"{property} is missing or invalid.");
+
+    return value.ValueKind switch
+    {
+        JsonValueKind.String => value.GetString() ?? "",
+        JsonValueKind.Number => value.GetRawText(),
+        JsonValueKind.True => "true",
+        JsonValueKind.False => "false",
+        _ => throw new InvalidOperationException($"{property} is missing or invalid.")
+    };
 }
 
 static void ValidateOllamaConfiguration(ProvisioningConfig config)

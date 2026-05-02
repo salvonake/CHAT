@@ -36,6 +36,7 @@
     <ProjectReference Include="..\..\src\Poseidon.Ingestion\Poseidon.Ingestion.csproj" />
     <ProjectReference Include="..\..\src\Poseidon.Retrieval\Poseidon.Retrieval.csproj" />
     <ProjectReference Include="..\..\src\Poseidon.Security\Poseidon.Security.csproj" />
+    <ProjectReference Include="..\..\src\Poseidon.ModelCertification\Poseidon.ModelCertification.csproj" />
     <ProjectReference Include="..\..\src\Poseidon.Infrastructure\Poseidon.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Poseidon.Desktop\Poseidon.Desktop.csproj" />
     <ProjectReference Include="..\..\src\Poseidon.Api\Poseidon.Api.csproj" />

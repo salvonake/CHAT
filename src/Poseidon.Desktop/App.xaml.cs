@@ -73,7 +73,13 @@ public partial class App : System.Windows.Application
 
     protected override async void OnStartup(StartupEventArgs e)
     {
+        WriteBootstrapLog("INF", "Poseidon desktop launch started.");
         var debugMode = e.Args.Any(arg => string.Equals(arg, "--debug", StringComparison.OrdinalIgnoreCase));
+
+        // Global handlers are attached before any startup work that can fail.
+        DispatcherUnhandledException += OnDispatcherUnhandledException;
+        AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;
+        TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
 
         // ── Single-Instance Guard ──
         _singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out bool createdNew);
@@ -81,16 +87,19 @@ public partial class App : System.Windows.Application
         {
             if (await TrySignalRunningInstanceAsync())
             {
+                WriteBootstrapLog("WRN", "Secondary launch signaled the existing instance.");
                 Shutdown(0);
                 return;
             }
 
             if (TryActivateExistingInstanceWindow())
             {
+                WriteBootstrapLog("WRN", "Secondary launch activated the existing instance window.");
                 Shutdown(0);
                 return;
             }
 
+            WriteBootstrapLog("WRN", "Secondary launch could not activate the existing instance.");
             System.Windows.MessageBox.Show(
                 "Poseidon est deja en cours d'execution en arriere-plan. Ouvrez-le depuis la zone de notification.",
                 "Poseidon",
@@ -99,11 +108,6 @@ public partial class App : System.Windows.Application
             Shutdown(1);
             return;
         }
-
-        // ── Global Exception Handlers ──
-        DispatcherUnhandledException += OnDispatcherUnhandledException;
-        AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;
-        TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
 
         base.OnStartup(e);
 
@@ -201,10 +205,14 @@ public partial class App : System.Windows.Application
         Log.Logger = loggerConfiguration.CreateLogger();
 
         Log.Information("═══ Poseidon LCDSS Starting ═══");
+        WriteBootstrapLog("INF", $"Serilog initialized. AppLog={paths.AppLogPath}; StartupLog={paths.StartupLogPath}");
         if (debugMode)
             Log.Information("Debug mode enabled from --debug flag");
         if (userConfigValidationError is not null)
+        {
+            WriteBootstrapLog("ERR", $"User configuration is invalid: {userConfigValidationError}");
             Log.Error("User configuration is invalid and will be handled in Recovery: {Error}", userConfigValidationError);
+        }
 
         // ── Build Host ──
         _host = Host.CreateDefaultBuilder()
@@ -296,8 +304,13 @@ public partial class App : System.Windows.Application
                 services.AddSingleton<IRetrievalPipeline, LegalRetrievalPipeline>();
 
                 // ── MediatR ──
+                var mediatRLicenseKey = SecurityConfigurationValidator.ResolveMediatRLicenseKey(cfg);
                 services.AddMediatR(mCfg =>
-                    mCfg.RegisterServicesFromAssemblyContaining<Poseidon.Application.AssemblyMarker>());
+                {
+                    mCfg.RegisterServicesFromAssemblyContaining<Poseidon.Application.AssemblyMarker>();
+                    if (!string.IsNullOrWhiteSpace(mediatRLicenseKey))
+                        mCfg.LicenseKey = mediatRLicenseKey;
+                });
 
                 // ── Desktop Services ──
                 services.AddSingleton<IDispatcherService, WpfDispatcherService>();
@@ -611,6 +624,7 @@ public partial class App : System.Windows.Application
 
     private static void LogFatalException(string source, Exception ex)
     {
+        WriteBootstrapLog("ERR", $"Fatal exception from {source}: {ex}");
         try
         {
             Log.Fatal(ex, "═══ Poseidon LCDSS FATAL ═══ Source: {Source}", source);
@@ -736,6 +750,25 @@ public partial class App : System.Windows.Application
         {
             Source = new Uri(resourcePath, UriKind.Relative)
         });
+    }
+
+    private static void WriteBootstrapLog(string level, string message)
+    {
+        try
+        {
+            var logDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "Poseidon",
+                "Logs");
+            Directory.CreateDirectory(logDir);
+            var line = $"{DateTimeOffset.Now:yyyy-MM-dd HH:mm:ss.fff zzz} [{level}] [bootstrap] {message}{Environment.NewLine}";
+            File.AppendAllText(Path.Combine(logDir, "startup.log"), line, Encoding.UTF8);
+            File.AppendAllText(Path.Combine(logDir, "app.log"), line, Encoding.UTF8);
+        }
+        catch
+        {
+            // Bootstrap logging must never block launch or mask the original failure.
+        }
     }
 }
 

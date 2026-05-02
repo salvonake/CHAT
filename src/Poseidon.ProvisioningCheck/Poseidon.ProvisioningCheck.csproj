@@ -14,6 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Poseidon.ModelCertification\Poseidon.ModelCertification.csproj" />
     <ProjectReference Include="..\Poseidon.Security\Poseidon.Security.csproj" />
   </ItemGroup>
 

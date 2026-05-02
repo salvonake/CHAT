@@ -1,0 +1,16 @@
+﻿
+
+Algorithm : SHA256
+Hash      : 3C5B837E0AFFDCE7A1D35F49F3383C9C28FE24E04D6ED9955C99DA92332A4792
+Path      : C:\LegalAI\release\Poseidon-1.0.2.1\artifacts\Poseidon.Bundle.exe
+
+Algorithm : SHA256
+Hash      : D1CC4E8B15C4EA65673AF19451374349FDA905BBDECFCE8DFAA81AA6F3F7A19A
+Path      : C:\LegalAI\release\Poseidon-1.0.2.1\artifacts\Poseidon.Installer.msi
+
+Algorithm : SHA256
+Hash      : 3C5B837E0AFFDCE7A1D35F49F3383C9C28FE24E04D6ED9955C99DA92332A4792
+Path      : C:\LegalAI\release\Poseidon-1.0.2.1\artifacts\Setup.exe
+
+
+

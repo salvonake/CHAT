@@ -23,6 +23,8 @@ var builder = Host.CreateApplicationBuilder(args);
 var services = builder.Services;
 var configuration = builder.Configuration;
 SecurityConfigurationValidator.ValidateWorker(configuration, builder.Environment.EnvironmentName);
+var securityContext = SecurityValidationContext.FromConfiguration(configuration, builder.Environment.EnvironmentName);
+var mediatRLicenseKey = SecurityConfigurationValidator.ResolveMediatRLicenseKey(configuration, securityContext);
 
 services.AddWindowsService(options =>
 {
@@ -34,7 +36,11 @@ services.AddSingleton(instance);
 services.AddMemoryCache();
 
 services.AddMediatR(cfg =>
-	cfg.RegisterServicesFromAssemblyContaining<AssemblyMarker>());
+{
+	cfg.RegisterServicesFromAssemblyContaining<AssemblyMarker>();
+	if (!string.IsNullOrWhiteSpace(mediatRLicenseKey))
+		cfg.LicenseKey = mediatRLicenseKey;
+});
 
 ConfigureCoreServices(services, configuration, instance);
 

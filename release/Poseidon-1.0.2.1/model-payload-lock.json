@@ -1,0 +1,14 @@
+﻿{
+    "schemaVersion":  1,
+    "modelFile":  "Qwen_Qwen3.5-9B-Q5_K_M.gguf",
+    "actualPayload":  "tinyllama-1.1b-chat-v1.0.Q4_0.gguf",
+    "sha256":  "da3087fb14aede55fde6eb81a0e55e886810e43509ec82ecdc7aa5d62a03b556",
+    "sizeBytes":  637699456,
+    "source":  "https://huggingface.co/TheBloke/TinyLlama-1.1B-Chat-v1.0-GGUF",
+    "sourceFile":  "tinyllama-1.1b-chat-v1.0.Q4_0.gguf",
+    "validatedEvidenceZip":  "C:\\Users\\Ake\\AppData\\Local\\Temp\\poseidon-gguf-cert-20260430-152126.zip",
+    "validatedEvidenceSha256":  "A80F429EE7F8521C9BB86A709D40F04BA5A8C77BCD3411BC84C0BBB015C95C0C",
+    "replacedPayloadBackup":  "C:\\LegalAI\\installer\\models\\_certification-backup\\Qwen_Qwen3.5-9B-Q5_K_M.original.20260430-161141.gguf",
+    "boundAtUtc":  "2026-04-30T15:11:41.7527256Z",
+    "reason":  "Priority 7 artifact-only remediation: original Qwen GGUF classified as format drift against LLamaSharp 0.19.0; filename contract preserved for installer/runtime compatibility."
+}

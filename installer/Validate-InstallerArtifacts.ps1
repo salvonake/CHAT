@@ -24,12 +24,19 @@ if ($BuildProfile -eq "Production" -and $AllowTestModels) {
 $msi = Join-Path $OutputDir "Poseidon.Installer.msi"
 $bundle = Join-Path $OutputDir "Poseidon.Bundle.exe"
 $manifest = Join-Path $OutputDir "model-manifest.json"
+$modelCertificationReport = Join-Path $OutputDir "model-certification-report.json"
 $provenance = Join-Path $OutputDir "build-provenance.json"
 $prerequisiteReport = Join-Path $OutputDir "prerequisite-validation.json"
+$nativeBackendReport = Join-Path $OutputDir "native-backend-validation.json"
 $signingReport = Join-Path $OutputDir "signing-report.json"
 $machineConfig = Join-Path (Split-Path $OutputDir -Parent) "generated\appsettings.user.json"
 
-foreach ($artifact in @($msi, $bundle, $manifest, $provenance, $prerequisiteReport, $signingReport)) {
+$requiredArtifacts = @($msi, $bundle, $manifest, $provenance, $prerequisiteReport, $nativeBackendReport, $signingReport)
+if ($InstallerMode -eq "full") {
+    $requiredArtifacts += $modelCertificationReport
+}
+
+foreach ($artifact in $requiredArtifacts) {
     if (-not (Test-Path $artifact -PathType Leaf)) {
         throw "Required installer artifact missing: $artifact"
     }
@@ -76,9 +83,28 @@ if ($BuildProfile -eq "Production") {
             throw "Production machine config must contain Security:EncryptionPassphraseRef."
         }
 
+        if (-not $configJson.MediatR -or -not $configJson.MediatR.LicenseKeySecretRef) {
+            throw "Production machine config must contain MediatR:LicenseKeySecretRef."
+        }
+
         if (-not [string]::IsNullOrWhiteSpace([string]$configJson.Security.EncryptionPassphrase)) {
             throw "Production machine config contains plaintext Security:EncryptionPassphrase."
         }
+
+        if (-not [string]::IsNullOrWhiteSpace([string]$configJson.MediatR.LicenseKey)) {
+            throw "Production machine config contains plaintext MediatR:LicenseKey."
+        }
+    }
+}
+
+$nativeBackends = @((Get-Content -Raw $nativeBackendReport | ConvertFrom-Json) | ForEach-Object { $_ })
+foreach ($backend in $nativeBackends) {
+    if ($backend.required -eq $true -and ($backend.present -ne $true -or $backend.sizeBytes -le 0)) {
+        throw "Required native backend payload missing: $($backend.name)"
+    }
+
+    if ($backend.present -eq $true -and $backend.sha256 -notmatch '^[a-f0-9]{64}$') {
+        throw "Native backend payload has invalid hash: $($backend.name)"
     }
 }
 
@@ -98,7 +124,7 @@ foreach ($prereq in $prereqs) {
 }
 
 $json = Get-Content -Raw $manifest | ConvertFrom-Json
-if ($json.schemaVersion -ne 2) {
+if ($json.schemaVersion -ne 3) {
     throw "Unexpected manifest schemaVersion: $($json.schemaVersion)"
 }
 
@@ -155,6 +181,18 @@ foreach ($model in $json.models) {
         throw "Manifest model entry has invalid SHA-256: $($model.filename)"
     }
 
+    if ($model.type -eq "llm") {
+        foreach ($property in @("architecture", "quantization", "ggufVersion", "certifiedBackend", "certifiedAtUtc", "compatibilityStatus", "tokenizerPolicy", "warningAccepted", "certificationReportHash")) {
+            if (-not $model.PSObject.Properties[$property]) {
+                throw "Manifest LLM entry missing certification property '$property'."
+            }
+        }
+
+        if ($model.certificationReportHash -notmatch '^[a-f0-9]{64}$') {
+            throw "Manifest LLM entry has invalid certification report SHA-256."
+        }
+    }
+
     $key = "$($model.type)|$($model.filename)|$($model.targetPath)".ToLowerInvariant()
     if (-not $seen.Add($key)) {
         throw "Duplicate manifest model entry: $($model.filename)"
@@ -176,6 +214,60 @@ if ($InstallerMode -eq "full" -and ($llmCount -ne 1 -or $embeddingCount -ne 1)) 
 
 if ($InstallerMode -eq "degraded" -and ($llmCount -ne 0 -or $embeddingCount -ne 1)) {
     throw "Degraded manifest must contain exactly one embedding entry and no LLM entry."
+}
+
+if ($InstallerMode -eq "full") {
+    $reportHash = (Get-FileHash $modelCertificationReport -Algorithm SHA256).Hash.ToLowerInvariant()
+    $llm = @($json.models | Where-Object { $_.type -eq "llm" }) | Select-Object -First 1
+    if ($null -eq $llm) {
+        throw "Full manifest missing LLM entry for certification validation."
+    }
+
+    if ($reportHash -ne ([string]$llm.certificationReportHash).ToLowerInvariant()) {
+        throw "Model certification report hash does not match manifest."
+    }
+
+    $certification = Get-Content -Raw $modelCertificationReport | ConvertFrom-Json
+    if ($certification.schemaVersion -ne 1) {
+        throw "Unexpected model certification report schemaVersion: $($certification.schemaVersion)"
+    }
+
+    if ($certification.sha256 -ne $llm.sha256) {
+        throw "Certification report model hash does not match manifest LLM hash."
+    }
+
+    foreach ($pair in @(
+        @{ manifest = "architecture"; report = "architecture" },
+        @{ manifest = "quantization"; report = "quantization" },
+        @{ manifest = "ggufVersion"; report = "ggufVersion" },
+        @{ manifest = "certifiedBackend"; report = "backend" },
+        @{ manifest = "certifiedAtUtc"; report = "generatedAtUtc" },
+        @{ manifest = "compatibilityStatus"; report = "compatibilityStatus" }
+    )) {
+        $manifestValue = [string]$llm.PSObject.Properties[$pair.manifest].Value
+        $reportValue = [string]$certification.PSObject.Properties[$pair.report].Value
+        if ($manifestValue -ne $reportValue) {
+            throw "Manifest certification field '$($pair.manifest)' does not match report field '$($pair.report)'."
+        }
+    }
+
+    if ($llm.tokenizerPolicy -ne $certification.tokenizer.policy) {
+        throw "Manifest tokenizer policy does not match certification report."
+    }
+
+    if ([bool]$llm.warningAccepted -ne [bool]$certification.tokenizer.warningAccepted) {
+        throw "Manifest tokenizer warningAccepted does not match certification report."
+    }
+
+    if ($BuildProfile -eq "Production") {
+        if ($certification.compatible -ne $true -or $certification.acceptedForPackaging -ne $true) {
+            throw "Production model certification report must be compatible and accepted."
+        }
+
+        if ($certification.tokenizer.policy -ne "required" -or $certification.tokenizer.valid -ne $true) {
+            throw "Production model certification must satisfy required tokenizer policy."
+        }
+    }
 }
 
 Write-Host "Installer artifacts validated: $OutputDir"

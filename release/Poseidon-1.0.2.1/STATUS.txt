@@ -1,0 +1,12 @@
+﻿Release Status: NONPRODUCTION CERTIFICATION PACKAGE
+Version: 1.0.2.1
+Signing: NOT EXECUTED
+Classification: FORMAT DRIFT AGAINST LLamaSharp 0.19.0
+Approved Scope: Artifact-only remediation
+Installer Authority: WiX/Burn
+Runtime Proof: PASS - LLamaSharp loads certified TinyLlama payload and enters valid Degraded mode
+Production Promotion: BLOCKED until production signing, timestamp verification, and release authority approval
+Artifact Promotion Recommendation: Upload this complete folder atomically to the governed artifact store
+Production Build Gate: FAIL-CLOSED - signtool.exe missing; production signing infrastructure required.
+License Gate: BLOCKED - MediatR commercial license must be injected via MediatR:LicenseKeySecretRef before production approval.
+

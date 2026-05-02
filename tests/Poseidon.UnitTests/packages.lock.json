@@ -169,6 +169,11 @@
           "System.Numerics.Tensors": "8.0.0"
         }
       },
+      "LLamaSharp.Backend.Cpu": {
+        "type": "Transitive",
+        "resolved": "0.19.0",
+        "contentHash": "zG6xQCE2072MDqAgXRgyXXe2hWws4y6r40vU/vuxLzzYUXTyQwypPCpm+ZHuFJqL3YmZ9SNOzPFo3LnN7bDNKA=="
+      },
       "LLamaSharp.Backend.Cuda12": {
         "type": "Transitive",
         "resolved": "0.19.0",
@@ -1860,6 +1865,7 @@
         "type": "Project",
         "dependencies": {
           "CommunityToolkit.Mvvm": "[8.4.2, )",
+          "LLamaSharp.Backend.Cpu": "[0.19.0, )",
           "MediatR": "[14.1.0, )",
           "Microsoft.Extensions.Configuration.Json": "[10.0.7, )",
           "Microsoft.Extensions.DependencyInjection": "[10.0.7, )",
@@ -1887,6 +1893,7 @@
         "type": "Project",
         "dependencies": {
           "LLamaSharp": "[0.19.0, )",
+          "LLamaSharp.Backend.Cpu": "[0.19.0, )",
           "LLamaSharp.Backend.Cuda12": "[0.19.0, )",
           "Microsoft.Data.Sqlite": "[10.0.3, )",
           "Microsoft.Extensions.Http": "[10.0.3, )",
@@ -1910,6 +1917,9 @@
           "System.Text.Json": "[10.0.3, )",
           "UglyToad.PdfPig": "[1.7.0-custom-5, )"
         }
+      },
+      "poseidon.modelcertification": {
+        "type": "Project"
       },
       "poseidon.retrieval": {
         "type": "Project",

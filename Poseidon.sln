@@ -33,6 +33,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Poseidon.Management.Api", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Poseidon.ProvisioningCheck", "src\Poseidon.ProvisioningCheck\Poseidon.ProvisioningCheck.csproj", "{B7103470-5031-4FCA-ABB4-1AD24D99C8CA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Poseidon.ModelCertification", "src\Poseidon.ModelCertification\Poseidon.ModelCertification.csproj", "{4898C7BA-3CA9-49D0-BB04-BE3E46E0AB09}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -94,6 +96,10 @@ Global
 		{B7103470-5031-4FCA-ABB4-1AD24D99C8CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B7103470-5031-4FCA-ABB4-1AD24D99C8CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B7103470-5031-4FCA-ABB4-1AD24D99C8CA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4898C7BA-3CA9-49D0-BB04-BE3E46E0AB09}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4898C7BA-3CA9-49D0-BB04-BE3E46E0AB09}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4898C7BA-3CA9-49D0-BB04-BE3E46E0AB09}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4898C7BA-3CA9-49D0-BB04-BE3E46E0AB09}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{B95A9C05-4B6D-4CAA-937F-79AF3C3FC25A} = {1906F8A5-1C6C-4F37-AE75-5A264D9DD976}
@@ -109,5 +115,6 @@ Global
 		{6387C3E4-9360-4357-809C-8A6F69C1D453} = {AA8B9EDE-41D2-40C8-B6E4-51A075EF7E1C}
 		{14D06DA4-C780-4654-9FE2-D22B0FEECE8F} = {1906F8A5-1C6C-4F37-AE75-5A264D9DD976}
 		{B7103470-5031-4FCA-ABB4-1AD24D99C8CA} = {1906F8A5-1C6C-4F37-AE75-5A264D9DD976}
+		{4898C7BA-3CA9-49D0-BB04-BE3E46E0AB09} = {1906F8A5-1C6C-4F37-AE75-5A264D9DD976}
 	EndGlobalSection
 EndGlobal

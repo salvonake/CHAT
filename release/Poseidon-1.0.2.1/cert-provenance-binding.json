@@ -1,0 +1,15 @@
+﻿{
+    "schemaVersion":  1,
+    "generatedAtUtc":  "2026-04-30T15:20:55.5786116Z",
+    "purpose":  "Priority 7 certification provenance binding for 1.0.2.1 TinyLlama payload candidate",
+    "gitCommit":  "e07ac1c3c9f470498220c61a9228443c2ce9e595",
+    "dirty":  true,
+    "dirtyEntryCount":  31,
+    "patchPath":  "installer/output/working-tree.patch",
+    "patchSha256":  "EF3C7E7975251D0C77D7E224CE531A2736D421FA86342B23008019EEDE413F69",
+    "modelPayloadLockPath":  "installer/output/model-payload-lock.json",
+    "certifiedModelFilename":  "Qwen_Qwen3.5-9B-Q5_K_M.gguf",
+    "certifiedModelSha256":  "da3087fb14aede55fde6eb81a0e55e886810e43509ec82ecdc7aa5d62a03b556",
+    "buildProvenancePath":  "installer/output/build-provenance.json",
+    "certificationFinding":  "1.0.2.1 package preserves filename contract but replaces the failing Qwen bytes with validated TinyLlama payload bytes."
+}
